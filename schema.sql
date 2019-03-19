@@ -29,7 +29,12 @@ CREATE TABLE `projects` (
   `code_version_date` DATETIME NULL,
   `file_count` INT NULL,
   `function_count` INT NULL,
-  `prooject_version` VARCHAR(255) NULL,
+  `snapshot_verison` VARCHAR(45) NULL,
+  `blankLinesCount` INT NULL,
+  `buildTime` TIME NULL,
+  `commentLinesCount` INT NULL,
+  `hasAnalysisSummaries` VARCHAR(255) NULL,
+  `target` VARCHAR(255) NULL,
   PRIMARY KEY (`idsnapshots`));
 
 CREATE TABLE `bug_types` (
