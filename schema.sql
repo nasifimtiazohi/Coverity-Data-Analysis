@@ -10,8 +10,8 @@ USE `890coverity` ;
 CREATE TABLE `projects` (
   `idprojects` INT NOT NULL AUTO_INCREMENT,
   `stream` VARCHAR(45) NULL,
-  `repository_url` VARCHAR(45) NULL,
-  `github_url` VARCHAR(45) NULL,
+  `repository_url` VARCHAR(255) NULL,
+  `github_url` VARCHAR(255) NULL,
   `start_date` DATETIME NULL,
   `end_date` DATETIME NULL,
   PRIMARY KEY (`idprojects`));
@@ -29,7 +29,7 @@ CREATE TABLE `projects` (
   `code_version_date` DATETIME NULL,
   `file_count` INT NULL,
   `function_count` INT NULL,
-  `prooject_version` VARCHAR(45) NULL,
+  `prooject_version` VARCHAR(255) NULL,
   PRIMARY KEY (`idsnapshots`));
 
 CREATE TABLE `bug_types` (
@@ -42,9 +42,17 @@ CREATE TABLE `bug_types` (
 CREATE TABLE `files` (
   `idfiles` INT NOT NULL AUTO_INCREMENT,
   `stream` VARCHAR(45) NULL,
-  `filepath_on_coverity` VARCHAR(45) NULL,
-  `filepath_github` VARCHAR(45) NULL,
+  `filepath_on_coverity` VARCHAR(255) NULL,
+  `filepath_github` VARCHAR(255) NULL,
   PRIMARY KEY (`idfiles`));
+
+CREATE TABLE `filecommits` (
+  `idfilecommits` INT NOT NULL AUTO_INCREMENT,
+  `fileid` INT NULL,
+  `commit_sha` VARCHAR(255) NOT NULL,
+  `author_date` DATETIME NOT NULL,
+  `commit_date` DATETIME NOT NULL,
+  PRIMARY KEY (`idfilecommits`));
 
 CREATE TABLE `alerts` (
   `cid` INT NOT NULL,
@@ -76,5 +84,7 @@ CREATE TABLE `alerts` (
   `after_second_snapshot` TINYINT NULL,
   `is_invalid` TINYINT NULL,
   PRIMARY KEY (`cid`, `stream`));
+
+
 
 
