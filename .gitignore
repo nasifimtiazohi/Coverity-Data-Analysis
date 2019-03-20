@@ -13,6 +13,7 @@
 .*.lb
 .DS_Store
 *.pdf
+*.xml
 errors.txt
 
 ## Intermediate documents:
