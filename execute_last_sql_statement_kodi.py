@@ -9,14 +9,15 @@ connection = pymysql.connect(host='localhost',
 
 queries=[
     #initiate Kodi on project database
-    "insert into projects values(null,'Kodi','https://github.com/xbmc/xbmc','git://github.com/xbmc/xbmc.git','2012-08-28','2019-03-16');"
+    "insert into projects values(null,'Kodi','https://github.com/xbmc/xbmc','git://github.com/xbmc/xbmc.git','2012-08-28','2019-03-16');",
     #invalidate the alerts before first detected
     "update alerts \
     set is_invalid=1 \
     where first_detected  < \
                             (select start_date \
                             from projects \
-                            where stream='Kodi')"
+                            where stream='Kodi')",
+    "insert into projects values(null,'ovirt-engine','git://github.com/oVirt/ovirt-engine','https://github.com/oVirt/ovirt-engine','2013-06-24','2019-03-18');"
 ]
 
 with connection.cursor() as cursor:

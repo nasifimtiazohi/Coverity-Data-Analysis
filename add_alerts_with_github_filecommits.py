@@ -8,9 +8,6 @@ import dateutil.parser
 import sys
 
 #read system arguments
-# repo="xbmc/xbmc"
-# datafile="AllKodi.xml"
-# project_name="Kodi"
 project_name=sys.argv[1]
 github_repo=sys.argv[2]
 datafile=sys.argv[3]
@@ -55,13 +52,13 @@ def typeId_ifexists(bugType):
 def addFile(filename):
     #this function returns a boolean if there is a valid link for the file on master branch
     with connection.cursor() as cursor:
-        github="https://github.com/xbmc/xbmc/tree/master"+filename
+        github="https://github.com/"+github_repo + "/tree/master"+filename
         r=requests.get(github)
         if r.status_code == 200:
-            query='insert into files values(null,"Kodi","'+filename+'","'+github+'");'
+            query='insert into files values(null,"'+ project_name+'","'+filename+'","'+github+'");'
             flag=True
         else:
-            query='insert into files values(null,"Kodi","'+filename+'","invalid");'
+            query='insert into files values(null,"'+ project_name+'","'+filename+'","invalid");'
             flag=False 
         try:
             cursor.execute(query)
