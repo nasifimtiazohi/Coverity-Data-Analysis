@@ -35,6 +35,7 @@ CREATE TABLE `projects` (
   `commentLinesCount` INT NULL,
   `hasAnalysisSummaries` VARCHAR(255) NULL,
   `target` VARCHAR(255) NULL,
+  `last_snapshot` INT,
   PRIMARY KEY (`idsnapshots`));
 
 CREATE TABLE `bug_types` (
@@ -86,7 +87,7 @@ CREATE TABLE `alerts` (
   `merge_extra` VARCHAR(255) NULL,
   `merge_key` VARCHAR(255) NULL,
   `owner_name` VARCHAR(255) NULL,
-  `after_second_snapshot` TINYINT NULL,
+  -- what is the conditions for is_invalid??
   `is_invalid` TINYINT NULL,
   PRIMARY KEY (`cid`, `stream`));
 
