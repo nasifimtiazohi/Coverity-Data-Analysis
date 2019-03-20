@@ -5,6 +5,15 @@ import json
 import os
 import time
 import dateutil.parser
+import sys
+
+#read system arguments
+# repo="xbmc/xbmc"
+# datafile="AllKodi.xml"
+# project_name="Kodi"
+project_name=sys.argv[1]
+github_repo=sys.argv[2]
+datafile=sys.argv[3]
 
 #Kodi project runs Coverity Scan only on master branch
 #discussion on - https://forum.kodi.tv/showthread.php?tid=342142&pid=2835880#pid2835880
@@ -73,7 +82,7 @@ def fileId_ifexists(filename):
 def add_file_commits(filename,fileid):
     print(filename)
     header={"Authorization":"token "+token}
-    url="https://api.github.com/repos/xbmc/xbmc/commits?path="+filename
+    url="https://api.github.com/repos/"+github_repo+"/commits?path="+filename
     page=1
     commits=[]
     while True:
@@ -81,6 +90,7 @@ def add_file_commits(filename,fileid):
         r=requests.get(url,params={'page':page,'sha':'master'},headers=header)
         while not r.ok:
             #handle api rate limit
+            print(r.content)
             time.sleep(3)
             r=requests.get(url,params={'page':page,'sha':'master'},headers=header)
         data=json.loads(r.content)
@@ -113,8 +123,10 @@ def add_file_commits(filename,fileid):
 if __name__=="__main__":
     #open xml file
     import xml.etree.ElementTree as ET
-    tree = ET.parse('AllKodi.xml')
+    tree = ET.parse(datafile)
     root = tree.getroot()
+
+    errors=open("errors.txt","w")
 
     for child in root:
         data=child.attrib
@@ -136,10 +148,67 @@ if __name__=="__main__":
         fileId=fileId_ifexists(data["file"])
 
         #look for github commits only if there is a valid github link on the master branch
+        #it also controls for the case that filecommits will only be searched for at the
+        #first time the file is added
         if valid_github_link:
             filename=data["file"]
             #make api call and put commits into database
             add_file_commits(filename,fileId)
+        
+        #add alerts
+        arguments=[
+            data["cid"], 
+            project_name,
+            str(bugTypeId), 
+            data["status"] ,
+            datetime.datetime.strptime(data["firstDetected"],'%m/%d/%y').strftime('%y/%m/%d'),
+            data["owner"],
+            data["classification"],
+            data["severity"],
+            data["action"],
+            data["displayComponent"],
+            str(fileId),
+            data["function"],
+            data["checker"],
+            data["occurrenceCount"],
+            data["cwe"],
+            data["externalReference"],
+            data["FirstSnapshot"],
+            data["functionMergeName"],
+            data["issueKind"],
+            data["Language"],
+            data["lastDetectedSnapshot"],
+            data["lastTriaged"],
+            data["legacy"],
+            data["mergeExtra"],
+            data["mergeKey"],
+            data["ownerName"],
+            0
+        ]
+        query="insert into alerts values ("
+        for idx, arg in enumerate(arguments):
+
+            #value cleaning
+            arg=str(arg) #if not string
+            arg=arg.strip() #if any whitespace ahead or trailing
+            #remove illegal character
+            arg=arg.replace('"',"'")
+
+
+
+            if is_number(arg) or arg=="null":
+                query+=arg
+            else:
+                query+='"'+arg+'"'
+            if idx<len(arguments)-1:
+                query+=","
+        query+=");"
+        with connection.cursor() as cursor:
+            try:
+                cursor.execute(query)
+            except Exception as e:
+                print(e,query)
+                errors.write(str(e)+"\n")
         
 
 
