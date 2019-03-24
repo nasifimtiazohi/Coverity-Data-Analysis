@@ -9,13 +9,7 @@ import sys
 
 #read system arguments
 project_name=sys.argv[1]
-github_repo=sys.argv[2]
-datafile=sys.argv[3]
-
-#Kodi project runs Coverity Scan only on master branch
-#discussion on - https://forum.kodi.tv/showthread.php?tid=342142&pid=2835880#pid2835880
-
-token=os.environ["githubtoken"] 
+datafile=sys.argv[2]
 
 def is_number(n):
     try:
@@ -50,21 +44,12 @@ def typeId_ifexists(bugType):
 
 
 def addFile(filename):
-    #this function returns a boolean if there is a valid link for the file on master branch
     with connection.cursor() as cursor:
-        github="https://github.com/"+github_repo + "/tree/master"+filename
-        r=requests.get(github)
-        if r.status_code == 200:
-            query='insert into files values(null,"'+ project_name+'","'+filename+'","'+github+'");'
-            flag=True
-        else:
-            query='insert into files values(null,"'+ project_name+'","'+filename+'","invalid");'
-            flag=False 
+        query = "insert into files values(null,'"+str(project_name)+"','"+str(filename)+"');"
         try:
             cursor.execute(query)
         except Exception as e:
             print(e)
-        return flag
 
 def fileId_ifexists(filename):
     with connection.cursor() as cursor:
@@ -78,8 +63,8 @@ def fileId_ifexists(filename):
 
 def add_file_commits(filename,fileid):
     print(filename)
-    header={"Authorization":"token "+token}
-    url="https://api.github.com/repos/"+github_repo+"/commits?path="+filename
+    header={}
+    url=filename
     page=1
     commits=[]
     while True:
@@ -139,18 +124,11 @@ if __name__=="__main__":
         bugTypeId=typeId_ifexists(data["type"])
 
         #handle file
-        valid_github_link=False
         if fileId_ifexists(data["file"])==None:
-            valid_github_link = addFile(data["file"])
+            addFile(data["file"])
         fileId=fileId_ifexists(data["file"])
 
-        #look for github commits only if there is a valid github link on the master branch
-        #it also controls for the case that filecommits will only be searched for at the
-        #first time the file is added
-        if valid_github_link:
-            filename=data["file"]
-            #make api call and put commits into database
-            add_file_commits(filename,fileId)
+        
         
         #add alerts
         arguments=[
@@ -182,7 +160,7 @@ if __name__=="__main__":
             data["ownerName"],
             0
         ]
-        query="insert into alerts values ("
+        query="insert into alerts values (null,"
         for idx, arg in enumerate(arguments):
 
             #value cleaning

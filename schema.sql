@@ -16,6 +16,7 @@ CREATE TABLE `projects` (
   `end_date` DATETIME NULL,
   -- what to do if there is more than one branch?
   `branch` VARCHAR(45) NULL,
+  UNIQUE INDEX `project_UNIQUE` (`project` ASC) VISIBLE,
   PRIMARY KEY (`idprojects`));
 
 CREATE TABLE `snapshots` (
@@ -121,6 +122,7 @@ PRIMARY KEY (`idalerts`));
 
 CREATE TABLE `890coverity`.`occurrences` (
 `alert_id` INT NOT NULL,
+`cid` INT NOT NULL,
 `event_id` INT NOT NULL,
 `short_filename` VARCHAR(45) NOT NULL,
 `file_id` INT NULL,
