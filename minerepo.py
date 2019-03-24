@@ -46,12 +46,34 @@ def project_exists(project):
 if __name__=="__main__":
     #read command line arguments
     project=sys.argv[1]
+    path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
     #check if project exists
     if not project_exists(project):
         exit()
-    file='xbmc/cores/VideoPlayer/VideoRenderers/ColorManager.cpp'
-    for commit in pydriller.RepositoryMining(get_github_url(project),since=get_startdate(project),filepath=file).traverse_commits():
-        print('Message: {}'.format(commit.msg))
+    files=['xbmc/cores/VideoPlayer/VideoRenderers/ColorManager.cpp'
+    # ,
+    #         'xbmc/video/VideoDatabase.cpp'
+            ]
+
+    repo=pydriller.RepositoryMining(path,since=get_startdate(project))
+
+    for f in files:
+        print(f)
+        temp=open("temp.txt","w")
+        repo._filepath=f
+        for commit in repo.traverse_commits():
+            if "Eliminate CServiceBroker::GetSettings(); use CServiceBroker" in commit.msg:
+                for m in commit.modifications:
+                    t=f.split("/")
+                    t=t[-1]
+                    print("\n",t,"\n")
+                    if t in m.filename:
+                        temp.write(commit.msg)
+                        temp.write(m.filename)
+                        temp.write(m.diff)
+        break
+                
+
     
 
     
