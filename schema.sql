@@ -66,15 +66,16 @@ COMMENT="this table keep track of unique file and commit pairs for ease of analy
 
 CREATE TABLE `890coverity`.`commits` (
   -- I expect more info to come here. e.g. parent?
-  `idcommits` INT NOT NULL,
-  `sha` VARCHAR(45) NULL,
-  `author` VARCHAR(45) NULL,
-  `author_email` VARCHAR(45) NULL,
+  `idcommits` INT NOT NULL AUTO_INCREMENT,
+  `sha` VARCHAR(255) NULL UNIQUE,
+  `author` VARCHAR(255) NULL,
+  `author_email` VARCHAR(255) NULL,
   `author_date` DATETIME NULL,
-  `committer` VARCHAR(45) NULL,
-  `committer_email` VARCHAR(45) NULL,
+  `committer` VARCHAR(255) NULL,
+  `committer_email` VARCHAR(255) NULL,
   `commit_date` DATETIME NULL,
   `message` LONGTEXT NULL,
+  `project` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`idcommits`));
 
 CREATE TABLE `890coverity`.`diffs` (

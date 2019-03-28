@@ -16,7 +16,7 @@
 *.xml
 *.pyc
 .vscode
-errors.txt
+*.txt
 
 ## Intermediate documents:
 *.dvi
