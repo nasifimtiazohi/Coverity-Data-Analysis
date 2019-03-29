@@ -9,11 +9,11 @@ USE `890coverity` ;
 
 CREATE TABLE `projects` (
   `idprojects` INT NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(45) NULL,
+  `name` VARCHAR(255) NULL,
   `repository_url_on_coverity` VARCHAR(255) NULL COMMENT "repository url as listed on Coverity Scan",
   `github_url` VARCHAR(255) NULL,
   `stream_count` INT NOT NULL,
-  `branch_aka_stream` VARCHAR(45) NULL,  -- if we find two streams for any project (unlikely) we have to make use of this column
+  `branch_aka_stream` VARCHAR(255) NULL,  -- if we find two streams for any project (unlikely) we have to make use of this column
   `start_date` DATETIME NULL,
   `end_date` DATETIME NULL,
   UNIQUE INDEX `unique_stream` (`name`,`branch_aka_stream`),
@@ -21,9 +21,9 @@ CREATE TABLE `projects` (
 
 CREATE TABLE `snapshots` (
 `idsnapshots` INT NOT NULL,
-`stream` VARCHAR(45) NOT NULL,
+`stream` VARCHAR(255) NOT NULL,
 `date` DATETIME NULL,
-`description` VARCHAR(255) NULL,
+`description` LONGTEXT NULL,
 `total_detected` INT NULL,
 `newly_detected` INT NULL,
 `newly_eliminated` INT NULL,
@@ -31,13 +31,12 @@ CREATE TABLE `snapshots` (
 `lines_of_code` INT NULL,
 `code_version_date` DATETIME NULL,
 `file_count` INT NULL,
-`function_count` INT NULL,
-`snapshot_verison` VARCHAR(45) NULL,
+`function_count` LONGTEXT NULL,
 `blankLinesCount` INT NULL,
 `buildTime` TIME NULL,
 `commentLinesCount` INT NULL,
-`hasAnalysisSummaries` VARCHAR(255) NULL,
-`target` VARCHAR(255) NULL,
+`hasAnalysisSummaries` LONGTEXT NULL,
+`target` LONGTEXT NULL,
 `last_snapshot` INT COMMENT "keeping track of last snapshot within our data for this stream",
 PRIMARY KEY (`idsnapshots`));
 
@@ -46,22 +45,22 @@ PRIMARY KEY (`idsnapshots`));
 CREATE TABLE `bug_types` (
 `idbug_types` INT NOT NULL AUTO_INCREMENT,
 `type` VARCHAR(255) NULL,
-`impact` VARCHAR(45) NULL,
+`impact` VARCHAR(255) NULL,
 `category` VARCHAR(255) NULL,
 PRIMARY KEY (`idbug_types`));
 
 CREATE TABLE `files` (
   -- how to handle branching? not current concern
 `idfiles` INT NOT NULL AUTO_INCREMENT,
-`project` VARCHAR(45) NULL,
-`filepath_on_coverity` VARCHAR(255) NULL COMMENT "begins with /",
+`project` VARCHAR(255) NULL,
+`filepath_on_coverity` VARCHAR(4095) NULL COMMENT "begins with /",
 PRIMARY KEY (`idfiles`));
 
 CREATE TABLE `filecommits` (
 `idfilecommits` INT NOT NULL AUTO_INCREMENT,
 `file_id` INT NULL,
 `commit_id` INT NULL,
-`change_type` VARCHAR(45) NULL COMMENT "how the file is changed",
+`change_type` VARCHAR(255) NULL COMMENT "how the file is changed",
 `lines_added` INT NULL,
 `lines_removed` INT NULL,
 PRIMARY KEY (`idfilecommits`))
@@ -70,24 +69,24 @@ COMMENT="this table keep track of unique file and commit pairs for ease of analy
 CREATE TABLE `890coverity`.`commits` (
   -- I expect more info to come here. e.g. parent?
   `idcommits` INT NOT NULL AUTO_INCREMENT,
-  `sha` VARCHAR(255) NULL UNIQUE,
-  `author` VARCHAR(255) NULL,
-  `author_email` VARCHAR(255) NULL,
+  `sha` VARCHAR(4095) NULL UNIQUE,
+  `author` VARCHAR(4095) NULL,
+  `author_email` VARCHAR(4095) NULL,
   `author_date` DATETIME NULL,
-  `committer` VARCHAR(255) NULL,
-  `committer_email` VARCHAR(255) NULL,
+  `committer` VARCHAR(4095) NULL,
+  `committer_email` VARCHAR(4095) NULL,
   `commit_date` DATETIME NULL,
   `message` LONGTEXT NULL,
   `affected_files_count` INT NULL,
   `net_lines_added` INT NULL,
   `net_lines_removed` INT NULL, 
-  `is_merged` TINYINT,
-  `project` VARCHAR(45) NOT NULL,
+  `is_merged` VARCHAR(255),
+  `project` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`idcommits`));
 
 CREATE TABLE `890coverity`.`commit_parents` (
   `commit_id` INT NOT NULL,
-  `parent_hash` VARCHAR(255) NULL,
+  `parent_hash` VARCHAR(4095) NULL,
   `parent_commit_id` INT NULL);
 
 CREATE TABLE `890coverity`.`diffs` (
@@ -102,38 +101,38 @@ CREATE TABLE `890coverity`.`diffs` (
 
 CREATE TABLE `890coverity`.`parsed_diff` (
   `diff_id` INT NOT NULL,
-  `change_type` VARCHAR(45) NULL,
+  `change_type` VARCHAR(255) NULL,
   `line_number` INT NULL,
-  `code` VARCHAR(255) NULL);
+  `code` LONGTEXT NULL);
 
 CREATE TABLE `alerts` (
 `idalerts` INT NOT NULL AUTO_INCREMENT,
 `cid` INT NOT NULL,
 `stream` VARCHAR(255) NOT NULL,
 `bug_type` VARCHAR(255) NULL,
-`status` VARCHAR(45) NULL,
+`status` VARCHAR(255) NULL,
 `first_detected` DATE NULL,
-`owner` VARCHAR(255) NULL,
-`classification` VARCHAR(45) NULL,
-`severity` VARCHAR(255) NULL,
-`action` VARCHAR(255) NULL,
-`component` VARCHAR(255) NULL,
+`owner` VARCHAR(4095) NULL,
+`classification` VARCHAR(4095) NULL,
+`severity` VARCHAR(4095) NULL,
+`action` LONGTEXT NULL,
+`component` VARCHAR(4095) NULL,
 `file_id` INT NULL,
-`function` VARCHAR(255) NULL,
-`checker` VARCHAR(255) NULL,
+`function` VARCHAR(4095) NULL,
+`checker` VARCHAR(4095) NULL,
 `count` INT NULL,
 `CWE` INT NULL,
-`ext_ref` VARCHAR(255) NULL,
+`ext_ref` LONGTEXT NULL,
 `first_snapshot_id` INT NULL,
-`function_merge_name` VARCHAR(255) NULL,
-`issue_kind` VARCHAR(45) NULL,
-`language` VARCHAR(45) NULL,
+`function_merge_name` LONGTEXT NULL,
+`issue_kind` VARCHAR(255) NULL,
+`language` VARCHAR(255) NULL,
 `last_snapshot_id` INT NULL,
 `last_triaged` DATETIME NULL,
-`legacy` VARCHAR(45) NULL,
-`merge_extra` VARCHAR(255) NULL,
-`merge_key` VARCHAR(255) NULL,
-`owner_name` VARCHAR(255) NULL,
+`legacy` VARCHAR(255) NULL,
+`merge_extra` LONGTEXT NULL,
+`merge_key` LONGTEXT NULL,
+`owner_name` VARCHAR(4095) NULL,
 -- what is the conditions for is_invalid??
 `is_invalid` TINYINT NULL,
 UNIQUE `unique_index`(`cid`,`stream`),
@@ -143,7 +142,7 @@ CREATE TABLE `890coverity`.`occurrences` (
 `alert_id` INT NOT NULL,
 `cid` INT NOT NULL,
 `event_id` INT NOT NULL,
-`short_filename` VARCHAR(45) NOT NULL,
+`short_filename` VARCHAR(4095) NOT NULL,
 `file_id` INT NULL,
 `line_number` INT NULL,
 `is_defect_line` TINYINT,
