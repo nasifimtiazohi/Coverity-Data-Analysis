@@ -67,6 +67,12 @@ for data in datalist:
         data["snapshotTarget"],
         str(past_snapshot_id)
     ]
+    
+    # add an escaping string function. not the best practice. but easiest fix.
+    for a in arguments:
+        if type(a)==str:
+            a=connection.escape_string(a)
+
     query="insert into snapshots values ("
     for idx, arg in enumerate(arguments):
 
