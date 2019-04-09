@@ -21,7 +21,7 @@ def is_number(n):
 #mysql conncetion
 connection = pymysql.connect(host='localhost',
                              user='root',
-                             db='890coverity',
+                             db='coverityscan',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor,
                              autocommit=True)
@@ -61,43 +61,6 @@ def fileId_ifexists(filename):
         return None
 
 
-# def add_file_commits(filename,fileid):
-#     print(filename)
-#     header={}
-#     url=filename
-#     page=1
-#     commits=[]
-#     while True:
-#         #loop to handle pagination
-#         r=requests.get(url,params={'page':page,'sha':'master'},headers=header)
-#         while not r.ok:
-#             #handle api rate limit
-#             print(r.content)
-#             time.sleep(3)
-#             r=requests.get(url,params={'page':page,'sha':'master'},headers=header)
-#         data=json.loads(r.content)
-#         print(len(data),page)
-
-#         if(len(data))==0:
-#             #reached end of pagination
-#             break
-
-#         #read current data and increment page
-#         commits.extend(data)
-#         page+=1
-    
-    
-#     #add all commits in database
-#     for c in commits:
-#         author_date=(dateutil.parser.parse(c['commit']['author']['date'])).strftime('%y/%m/%d')
-#         commit_date=(dateutil.parser.parse(c['commit']['committer']['date'])).strftime('%y/%m/%d')
-#         query="insert into filecommits values(null,"+str(fileid)+",'"+str(c['sha'])+"','"+ \
-#                 str(author_date) +"','"+str(commit_date)+"');"
-#         with connection.cursor() as cursor:
-#             try:
-#                 cursor.execute(query)
-#             except Exception as e:
-#                 print (e)
 
 
 
