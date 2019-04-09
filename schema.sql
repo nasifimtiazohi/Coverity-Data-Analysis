@@ -3,9 +3,9 @@ SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
 SET @OLD_TIME_ZONE=@@session.time_zone;
 
-DROP SCHEMA IF EXISTS `890coverity` ;
-CREATE SCHEMA IF NOT EXISTS `890coverity` DEFAULT CHARACTER SET utf8;
-USE `890coverity` ;
+DROP SCHEMA IF EXISTS `coverityscan` ;
+CREATE SCHEMA IF NOT EXISTS `coverityscan` DEFAULT CHARACTER SET utf8;
+USE `coverityscan` ;
 
 CREATE TABLE `projects` (
   `idprojects` INT NOT NULL AUTO_INCREMENT,
@@ -39,7 +39,7 @@ CREATE TABLE `snapshots` (
 `hasAnalysisSummaries` LONGTEXT NULL,
 `target` LONGTEXT NULL,
 `last_snapshot` INT COMMENT "keeping track of last snapshot within our data for this stream",
-PRIMARY KEY (`idsnapshots`));
+PRIMARY KEY (`idsnapshots`,`stream`));
 
 
 
@@ -67,7 +67,7 @@ CREATE TABLE `filecommits` (
 PRIMARY KEY (`idfilecommits`))
 COMMENT="this table keep track of unique file and commit pairs for ease of analysis";
 
-CREATE TABLE `890coverity`.`commits` (
+CREATE TABLE `coverityscan`.`commits` (
   -- I expect more info to come here. e.g. parent?
   `idcommits` INT NOT NULL AUTO_INCREMENT,
   `sha` VARCHAR(1023) NULL UNIQUE,
@@ -85,12 +85,12 @@ CREATE TABLE `890coverity`.`commits` (
   `project` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`idcommits`));
 
-CREATE TABLE `890coverity`.`commit_parents` (
+CREATE TABLE `coverityscan`.`commit_parents` (
   `commit_id` INT NOT NULL,
   `parent_hash` VARCHAR(4095) NULL,
   `parent_commit_id` INT NULL);
 
-CREATE TABLE `890coverity`.`diffs` (
+CREATE TABLE `coverityscan`.`diffs` (
   `iddiffs` INT NOT NULL AUTO_INCREMENT,
   `filecommit_id` INT NOT NULL,
   `old_start_line` INT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE `890coverity`.`diffs` (
   `content` LONGTEXT NULL,
   PRIMARY KEY (`iddiffs`));
 
-CREATE TABLE `890coverity`.`parsed_diff` (
+CREATE TABLE `coverityscan`.`parsed_diff` (
   `diff_id` INT NOT NULL,
   `change_type` VARCHAR(255) NULL,
   `line_number` INT NULL,
@@ -139,7 +139,7 @@ CREATE TABLE `alerts` (
 UNIQUE `unique_index`(`cid`,`stream`),
 PRIMARY KEY (`idalerts`));
 
-CREATE TABLE `890coverity`.`occurrences` (
+CREATE TABLE `coverityscan`.`occurrences` (
 `alert_id` INT NOT NULL,
 `cid` INT NOT NULL,
 `event_id` INT NOT NULL,
