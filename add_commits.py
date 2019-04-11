@@ -9,6 +9,7 @@ import re
 #read command line arguments
 project=sys.argv[1]
 path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
+last_checked=sys.argv[3]
 
 
 
@@ -51,7 +52,7 @@ def project_exists(project):
 
 def get_all_files(project):
     with connection.cursor() as cursor:
-        query="select * from files where project='"+str(project)+"';"
+        query="select * from files where project='"+str(project)+"' and idfiles >" + str(last_checked)+";"
         cursor.execute(query)
         results=cursor.fetchall()
         return results
@@ -94,6 +95,7 @@ def add_commit(commit):
     for a in arguments:
         if type(a)==str:
             a=connection.escape_string(a)
+            a=a.replace(chr(92),'')
 
     query="insert into commits values (null,"
     for idx, arg in enumerate(arguments):
@@ -286,6 +288,8 @@ if __name__=="__main__":
     files=get_all_files(project)
 
     for f in files:
+        #get fid and see if it is already covered
+
         #parse local filepath
         path=f["filepath_on_coverity"]
         path=path[1:] #cut the beginning slash
