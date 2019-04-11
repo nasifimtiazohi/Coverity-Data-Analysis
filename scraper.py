@@ -10,9 +10,9 @@ import requests
 import time
 import pymysql
 import sys
+import math
 
-connection = pymysql.connect(host='localhost',
-                             user='root',
+connection = pymysql.connect(host='localhost', user='root',
                              db='coverityscan',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor,
@@ -25,10 +25,8 @@ connection = pymysql.connect(host='localhost',
 #for firefox - https://scan5.coverity.com/reports.htm#v51570/p10098
 project= sys.argv[1]
 url=sys.argv[2]
-pagelimit = int(sys.argv[3])
-ignore_pages=int(sys.argv[4])
-alerts_per_page=200
-sleep_per_page=int(sys.argv[5])
+ignore_pages=int(sys.argv[3])
+sleep_per_page=int(sys.argv[4])
 
 def addFile(filename):
     with connection.cursor() as cursor:
@@ -97,7 +95,7 @@ def get_filepath(soup):
         return span["title"]
     except:
         return None
-def read_table(driver, tables, defect_id):
+def read_table(driver, tables, defect_id,alert_id,main_fid):
 
     if len(tables) > 1:
         print("more than one table found? logic error")
@@ -115,6 +113,7 @@ def read_table(driver, tables, defect_id):
     if len(tbodies) == 0:
         raise Exception('no tbody found under occurrences')
     table=tbodies[0]
+
     #now we should only have the event history
     
     # parse table
@@ -123,7 +122,7 @@ def read_table(driver, tables, defect_id):
     names = table.find_all("span", {"class": "event-tag event-name ng-binding"})
     files = table.find_all("td", {"class": "event-tree-filename ng-binding"})
 
-    #the main event with a diamond alert sign :P :P
+    #the main event with a diamond alert sign
     defect_event_id=None
     if len(defect_events)>0:
         defect_event_id=defect_events[0]
@@ -140,7 +139,6 @@ def read_table(driver, tables, defect_id):
     for e in events:
         #find the next row, starts from 2 for this function to work
         element_id+=1
-        #selenium_element=driver.find_element_by_xpath("/html/body/div[2]/aside/div/div[2]/div/div[6]/div/div/div/table/tbody/tr["+str(element_id)+"]")
         selenium_element=driver.find_element_by_xpath('//*[@id="source-browser-defect-occurrences"]/div/div/div/table/tbody[1]/tr['+str(element_id)+"]")
         driver.execute_script("arguments[0].scrollIntoView();", selenium_element)
 
@@ -185,13 +183,6 @@ def read_table(driver, tables, defect_id):
         raise Exception("all 4 lists are not equal.")
     for i in range (0,len(event_list)):
         with connection.cursor() as cursor:
-            ## first look for the alert id
-            query="select idalerts, file_id from alerts where cid="+str(defect_id)+" and stream='"+str(project)+"';"
-            cursor.execute(query)
-            result=cursor.fetchone()
-            alert_id=result["idalerts"]
-            main_fid=result["file_id"]
-
             ## get full filepath for main fid
             query="select filepath_on_coverity from files where idfiles="+str(main_fid)
             cursor.execute(query)
@@ -221,21 +212,16 @@ def read_table(driver, tables, defect_id):
             
             # if file_id is null, try to guess file_id here
             if file_id=="null":
-                ###check if source code purged
-                if len(event_list)==1 and line_number == 1 and short_filename in main_filepath:
+                ###check if source code purged or short filename matches main file path
+                if short_filename==main_filepath.split("/")[-1]:
                     file_id=main_fid
-                ### check if short filename matches main file path
                 else:
-                    temp=main_filepath.split("/")
-                    temp=temp[-1]
-                    if short_filename== temp:
-                        file_id=main_fid
-                    else:
-                        query='select * from files where filepath_on_coverity like "%'+short_filename+'" and project = "'+project+'";'
-                        cursor.execute(query)
-                        results=cursor.fetchall()
-                        if len(results)==1:
-                            file_id=results[0]["idfiles"] 
+                    query='select * from files where filepath_on_coverity like "%/'+short_filename+'" and project = "'+project+'";'
+                    cursor.execute(query)
+                    results=cursor.fetchall()
+                    if len(results)==1:
+                        file_id=results[0]["idfiles"] 
+                    #else manually verify?
 
             ## insert into occurrences
             query="insert into occurrences values("+str(alert_id)+","+ \
@@ -259,6 +245,21 @@ def read_table(driver, tables, defect_id):
                 print(e)
 
 
+#get all the cids from this project
+cids=[]
+aids=[]
+fids=[]
+with connection.cursor() as cursor:
+    query="select * from alerts where stream='"+project+"' order by cid desc;"
+    cursor.execute(query)
+    results=cursor.fetchall()
+    for item in results:
+        cids.append(str(item["cid"]))
+        aids.append(str(item["idalerts"]))
+        fids.append(str(item["file_id"]))
+
+pagelimit=int(math.ceil(float(len(cids))/200.0))
+
 for page in range(0, pagelimit):
     #look for if we need to ignore any page 
     if ignore_pages > 0:
@@ -267,89 +268,34 @@ for page in range(0, pagelimit):
         next_page.click()
         time.sleep(sleep_per_page)
         continue
-
-    last_selection="ui-widget-content slick-row active even selected"
-    unique_alerts=[]
-    while True:
-        #find the next cid and click on it 
-        next_cid = driver.find_element_by_xpath(
-            '/html/body/div[2]/div[3]/div[1]/div[2]/div[1]/div[5]/div/div[1]')
+    
+    for index in range(page*200,(page+1)*200):
+        defect_id=cids[index]
+        next_cid=driver.find_element_by_xpath("//*[contains(text(), '"+defect_id+"')]")
         driver.execute_script("arguments[0].scrollIntoView();", next_cid)
-        #driver.execute_script("window.scrollTo("+str(next_cid.location['x'])+","+str(next_cid.location['y'])+")")
         try:
             next_cid.click()
         except:
-            time.sleep(2)
+            time.sleep(3)
             print("clicking did not happen?")
             #driver.execute_script("window.scrollTo("+str(next_cid.location['x'])+","+str(next_cid.location['y'])+")")
-            ActionChains(driver).move_to_element(next_cid).click().perform() #what happens if fail here? I don't know, currently the program terminates
-            ## probably I have to add continue here
-
+            ActionChains(driver).move_to_element(next_cid).click().perform()
+        
         time.sleep(1)
-        # temp=driver.find_element_by_class_name(last_selection)
-        # print(temp)
-        # wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.ui-widget-content slick-row active even selected")))
-        # if 'even' in last_selection:
-        #     last_selection="ui-widget-content slick-row active odd selected"
-        # else:
-        #     last_selection="ui-widget-content slick-row active even selected"
-
+    
         soup = BS(driver.page_source, features="html.parser")
 
-        # #get cid number 
-        # ## note that data-merged-defect id can be different
-        # ## than what is shown as cid on webpage
-        # try:
-        #     cid=soup.find("div",{"class":["ui-widget-content slick-row active even selected","ui-widget-content slick-row active odd selected"]})
-        #     cid=cid.find("div",{"class":"slick-cell l0 r0 cid selected"})
-        #     cid=cid.find("div",{"class":"number"})
-        #     cid=int(cid.text)
-        # except:
-        #     print("reading cid did not work")
-        #     exit()
-        #     continue
-
-        #check if this alert id has been already handled
-        temp = soup.find_all("tr", {"class": ["event-tree-node ng-scope","event-tree-node ng-scope selected"]})
-        if len(temp)==0:
-            print("logic error. no cid found in occurrence table ")
-            continue
-        temp=temp[0]
-        try:
-            defect_id=temp["data-merged-defect-id"].strip()
-            defect_id=int(defect_id)
-        except Exception as e:
-            print("cannot find defect_id.",e)
-            continue
-        # if defect_id != cid: 
-        #     print("this is the case where cid is diferent", defect_id, cid)
-        #     defect_id=cid 
+        #check if data has alreade been parsed
+        alert_id=aids[index]
         with connection.cursor() as cursor:
-            query="select idalerts from alerts where cid="+str(defect_id)+" and stream='"+str(project)+"';"
-            cursor.execute(query)
-            result=cursor.fetchone()
-            if result is None:
-                continue
-            alert_id=result["idalerts"]
             query="select * from occurrences where alert_id="+str(alert_id)
             cursor.execute(query)
             result=cursor.fetchall()
         if len(result)>0:
-            if defect_id not in unique_alerts:
-                unique_alerts.append(defect_id)
             print("alert id already exists",defect_id,alert_id)
-            print("current count of unique alerts: ",len(unique_alerts))
-            if (len(unique_alerts) >= alerts_per_page):
-                break #break this page
             continue
         else:
-            if defect_id not in unique_alerts:
-                unique_alerts.append(defect_id)
             print("new alert id found: ",defect_id,alert_id)
-            print("current count of unique alerts: ",len(unique_alerts))
-
-        ### Note that the code will only come up to this point if
-        ### the defect id is updated
 
         occurrences = soup.find_all("div", {"class": "occurrences-data"})
         if len(occurrences) != 1:
@@ -358,20 +304,10 @@ for page in range(0, pagelimit):
         occurrences = occurrences[0] #there should be only one. And always there should be one.
         tables = occurrences.find_all("table")
         try:
-            read_table(driver, tables, defect_id)
+            file_id=fids[index]
+            read_table(driver, tables, defect_id, alert_id,file_id)
         except Exception as e:
             print("reading table did not work.", e)
-        # if (defect_id == last_defect_id):
-        #     print("page end reached",defect_id)
-        #     #click on to next page and break this while loop
-        #     next_page=driver.find_element_by_xpath('//*[@id="details-pager"]/div/span/span[5]')
-        #     next_page.click()
-        #     time.sleep(sleep_per_page)
-        #     break
-        # else:
-        #     last_defect_id = defect_id
-        if (len(unique_alerts) >= alerts_per_page):
-            break
     next_page=driver.find_element_by_xpath('//*[@id="details-pager"]/div/span/span[5]')
     next_page.click()
     time.sleep(sleep_per_page)

@@ -149,6 +149,14 @@ CREATE TABLE `coverityscan`.`occurrences` (
 `is_defect_line` TINYINT,
 PRIMARY KEY (`alert_id`, `event_id`));
 
+CREATE TABLE `coverityscan`.`alert_commit_tracking` (
+  `alert_id` INT NOT NULL,
+  `file_activity_around_intro` VARCHAR(45) NULL,
+  `file_activity_around_fix` VARCHAR(45) NULL,
+  `intro_commit_id` INT NULL,
+  `fix_commit_id` INT NULL,
+  PRIMARY KEY (`alert_id`));
+
 
 
 

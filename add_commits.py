@@ -3,6 +3,8 @@ import pymysql
 import pydriller
 import sys
 import datetime
+import re
+
 
 #read command line arguments
 project=sys.argv[1]
@@ -12,7 +14,7 @@ path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
 
 connection = pymysql.connect(host='localhost',
                              user='root',
-                             db='890coverity',
+                             db='coverityscan',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor,
                              autocommit=True)
@@ -172,25 +174,44 @@ def add_filecommits(file_id,filepath,commit_id):
             print(e,query)
 
 def parse_diff(diff,filecommit_id):
+    #can throw exception? 
+    # #handle them
     results=[]
     diff=diff.strip()
+
+    #what if there is more than 2 @? replace that with blanks
+    diff=re.sub('[@]{3,}','',diff)
+
     diffs=diff.split("@@")
     diffs=diffs[1:]
     if len(diffs)%2!=0:
-        print("logic error")
+        raise Exception("logic error")
     i=0
     while i<len(diffs):
         temp=diffs[i]
         temp=temp.strip()
         temp=temp.split(" ")
+        if len(temp)!=2:
+            #don't know if it is only old and new
+            #skip this one
+            i+=2
+            continue
         old=temp[0]
         new=temp[1]
         old=old.split(",")
-        old_start_line=old[0]
-        old_count=old[1]
+        if len(old)==2:
+            old_start_line=old[0]
+            old_count=old[1]
+        else:
+            old_start_line='null'
+            old_count='null'
         new=new.split(",")
-        new_start_line=new[0]
-        new_count=new[1]
+        if len(new)==2:
+            new_start_line=new[0]
+            new_count=new[1]
+        else:
+            new_start_line='null'
+            new_count='null'
         content=connection.escape_string(diffs[i+1])
         temp=[filecommit_id,old_start_line,old_count,new_start_line,new_count,content]
         results.append(temp)
@@ -205,7 +226,11 @@ def add_diff(commit,filepath,filecommit_id):
     filename=filepath[-1]
     for m in commit.modifications:
         if m.filename==filename:
-            results=parse_diff(m.diff,filecommit_id)
+            try:
+                results=parse_diff(m.diff,filecommit_id)
+            except Exception as e:
+                print(e)
+                continue
             for arguments in results:
                 # add an escaping string function. not the best practice. but easiest fix.
                 for a in arguments:
@@ -244,6 +269,8 @@ def diffId_ifExists(filecommit_id):
             return result['iddiffs']
         return None
 
+
+                    
 
 if __name__=="__main__":
     
