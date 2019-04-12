@@ -4,12 +4,18 @@ import pydriller
 import sys
 import datetime
 import re
+import os
+import subprocess
+import re
+import shlex
 
 
 #read command line arguments
 project=sys.argv[1]
 path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
 last_checked=sys.argv[3]
+os.chdir(path)
+
 
 
 
@@ -220,6 +226,7 @@ def parse_diff(diff,filecommit_id):
         i+=2
     return results
 
+def mine_gitlog(filename):
 
 
 
@@ -272,7 +279,7 @@ def diffId_ifExists(filecommit_id):
         return None
 
 
-                    
+                  
 
 if __name__=="__main__":
     
@@ -301,14 +308,11 @@ if __name__=="__main__":
             if commitId_ifExists(sha)==None:
                 add_commit(commit)
             commit_id=commitId_ifExists(sha)
-
             #add file and commit pair
             file_id=f["idfiles"]
             if filecommitId_ifExists(file_id,commit_id)==None:
                 add_filecommits(file_id,path,commit_id)
             filecommit_id = filecommitId_ifExists(file_id,commit_id)
-
-
             #look for diff if we get a filecommit id
             if diffId_ifExists(filecommit_id)==None and filecommit_id:
                 add_diff(commit,path,filecommit_id)

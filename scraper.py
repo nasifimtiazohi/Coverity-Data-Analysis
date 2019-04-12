@@ -269,6 +269,10 @@ for page in range(0, pagelimit):
         time.sleep(sleep_per_page)
         continue
     
+    #wait for cids[page*200] visibility
+    wait_cid=cids[page*200]
+    wait_cid=driver.find_element_by_xpath("//*[contains(text(), '"+wait_cid+"')]")
+    wait.until(EC.visibility_of_element_located(wait_cid))
     for index in range(page*200,(page+1)*200):
         defect_id=cids[index]
         next_cid=driver.find_element_by_xpath("//*[contains(text(), '"+defect_id+"')]")
