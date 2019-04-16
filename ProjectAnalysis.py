@@ -125,6 +125,7 @@ def fixed_alerts_with_history():
 def all_file_fix_activity(all_alerts):
         for alert in all_alerts:
                 aid=str(alert['idalerts'])
+                cid=str(alert['cid'])
                 print (aid)
                 query="select * from occurrences where alert_id="+aid
                 occurrences=execute(query)
@@ -161,7 +162,7 @@ def all_file_fix_activity(all_alerts):
                                 actionable=True
                                 for item in results:
                                         commits.append(item)
-                print(commits)
+                print(cid,commits)
 
 
 all_file_fix_activity(fixed_alerts_with_history())

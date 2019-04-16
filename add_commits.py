@@ -1,6 +1,4 @@
-### pymydriller only works with python3
 import pymysql
-import pydriller
 import sys
 import datetime
 import re
@@ -8,6 +6,7 @@ import os
 import subprocess
 import re
 import shlex
+import dateutil.parser as dp
 
 
 #read command line arguments
@@ -58,7 +57,14 @@ def project_exists(project):
 
 def get_all_files(project):
     with connection.cursor() as cursor:
-        query="select * from files where project='"+str(project)+"' and idfiles >" + str(last_checked)+";"
+        query='''select distinct f.idfiles, f.filepath_on_coverity
+                from alerts a
+                join files f
+                on a.file_id=f.idfiles
+                where a.stream="''' + str(project) + \
+                '''" and a.is_invalid=0 
+                and f.idfiles > ''' + str(last_checked)+ ";"
+        #query="select * from files where project='"+str(project)+"' and idfiles >" + str(last_checked)+";"
         cursor.execute(query)
         results=cursor.fetchall()
         return results
@@ -74,27 +80,30 @@ def commitId_ifExists(sha):
 
 def add_commit(commit):
     arguments=[]
-    arguments.append(commit.hash)
-    arguments.append(commit.author.name)
-    arguments.append(commit.author.email)
-    arguments.append(commit.author_date.strftime("%Y-%m-%d %H:%M:%S"))
-    arguments.append(commit.committer.name)
-    arguments.append(commit.committer.email)
-    arguments.append(commit.committer_date.strftime("%Y-%m-%d %H:%M:%S"))
-    arguments.append(commit.msg)
-
-    affected_files=0
-    lines_added=0
-    lines_removed=0
-    for m in commit.modifications:
-        affected_files+=1
-        lines_added+=m.added
-        lines_removed+=m.removed
+    
+    arguments.append(commit["hash"])
+    arguments.append(commit["author"])
+    arguments.append(commit["author_email"])
+    arguments.append(commit["author_date"].strftime("%Y-%m-%d %H:%M:%S"))
+    arguments.append(commit["committer"])
+    arguments.append(commit["committer_email"])
+    arguments.append(commit["commit_date"].strftime("%Y-%m-%d %H:%M:%S"))
+    arguments.append(commit["message"])
+    
+    #giving null to full commit data
+    affected_files='null'
+    lines_added='null'
+    lines_removed='null'
     
     arguments.append(affected_files)
     arguments.append(lines_added)
     arguments.append(lines_removed)
-    arguments.append(commit.merge)
+
+    if 'merge' in commit.keys():
+        arguments.append('True')
+    else:
+       arguments.append('False') 
+
     arguments.append(project)
     
     # add an escaping string function. not the best practice. but easiest fix.
@@ -120,6 +129,7 @@ def add_commit(commit):
     query+=");"
     with connection.cursor() as cursor:
         try:
+            # print(query)
             cursor.execute(query)
         except Exception as e:
             print(e,query)
@@ -136,24 +146,13 @@ def filecommitId_ifExists(file_id,commit_id):
         if result and 'idfilecommits' in result.keys():
             return result['idfilecommits']
         return None
-def add_filecommits(file_id,filepath,commit_id):
+def add_filecommits(file_id,filepath,commit_id,commit):
     arguments=[]
     arguments.append(str(file_id))
     arguments.append(str(commit_id))
-    filepath=filepath.split("/")
-    filename=filepath[-1]
-    mod_file=None
-    for m in commit.modifications:
-        if m.filename==filename:
-            mod_file=m
-    if mod_file != None:
-        arguments.append(mod_file.change_type)
-        arguments.append(mod_file.added)
-        arguments.append(mod_file.removed)
-    else:
-        arguments.append("null")
-        arguments.append("null")
-        arguments.append("null")
+    arguments.append(commit['change_type'])
+    arguments.append(commit['lines_added'])
+    arguments.append(commit['lines_removed'])
     
     # add an escaping string function. not the best practice. but easiest fix.
     for a in arguments:
@@ -177,6 +176,7 @@ def add_filecommits(file_id,filepath,commit_id):
     query+=");"
     with connection.cursor() as cursor:
         try:
+            # print(query)
             cursor.execute(query)
         except Exception as e:
             print(e,query)
@@ -226,7 +226,105 @@ def parse_diff(diff,filecommit_id):
         i+=2
     return results
 
-def mine_gitlog(filename):
+def get_start_end_date():
+    d={}
+    with connection.cursor() as cursor:
+        query="select start_date, end_date from projects where name='" + project + "';"
+        cursor.execute(query)
+        result=cursor.fetchone()
+        start=result['start_date']
+        end=result['end_date']
+        start=start.strftime('%Y-%m-%d')
+        d['start_date']=start
+        end=end.strftime('%Y-%m-%d')
+        d['end_date']=end
+        return d
+def mine_gitlog(filepath):
+    temp=get_start_end_date()
+    start_date=temp['start_date']
+    end_date= temp['end_date']
+    try:
+        lines = subprocess.check_output(
+            shlex.split('git log --follow --pretty=fuller --stat --after="'+start_date+ \
+                ' 00:00" --before="'+end_date+' 23:59" -- '+filepath), 
+            stderr=subprocess.STDOUT
+            ).split('\n')
+    except Exception as e:
+        print(e,"file does not exist?")
+        return []
+    commits=[]
+    commit={}
+    for idx, nextLine in enumerate(lines): 
+        if nextLine == '' or nextLine == '\n':
+            # ignore empty lines
+            pass
+        if bool(re.match('commit ', nextLine)):
+            # commit xxxx
+            ## new commit, so re-initialize
+            if len(commit) != 0: ## bypasses the first time		
+                commits.append(commit) ## add previous commit to the list
+                commit = {}
+            commit['hash'] = re.match('commit (.*)', nextLine, re.IGNORECASE).group(1) 
+        elif bool(re.match('merge:', nextLine, re.IGNORECASE)):
+            # Merge: xxxx xxxx
+            # not extracting merge commit information
+            commit['merge']= 'True'
+        elif bool(re.match('Author:', nextLine,)):
+            # Author: xxxx <xxxx@xxxx.com>
+            m = re.compile('Author:([ ]+)(.*) <(.*)>').match(nextLine)
+            commit['author'] = m.group(2)
+            commit['author_email'] = m.group(3)
+        elif bool(re.match('AuthorDate:', nextLine, re.IGNORECASE)):
+            # Date: xxx
+            fulldate=re.match("AuthorDate:([ ]+)(.*)",nextLine).group(2)
+            commit['author_date']=dp.parse(fulldate)
+        elif bool(re.match('Commit:', nextLine)):
+            # Commit: xxxx <xxxx@xxxx.com>
+            m = re.compile('Commit:([ ]+)(.*) <(.*)>').match(nextLine)
+            commit['committer'] = m.group(2)
+            commit['committer_email'] = m.group(3)
+        elif bool(re.match('CommitDate:', nextLine, re.IGNORECASE)):
+            # Date: xxx
+            fulldate=re.match(
+                "CommitDate:([ ]+)(.*)",nextLine).group(2)
+            commit['commit_date']=dp.parse(fulldate)
+        elif bool(re.match('    ', nextLine, re.IGNORECASE)):
+            # (4 empty spaces)
+            if 'message' not in commit.keys():
+                commit['message'] = nextLine.strip()
+            else:
+                commit['message']+='\n'+nextLine         
+        elif "file changed" in nextLine:
+            info=nextLine.split(',')
+            if len(info)==3:
+                commit['change_type']='ModificationType.MODIFY'
+                if '+' in info[1]:
+                    add=info[1].strip()
+                    add=add.split(' ')
+                    commit['lines_added']=int(add[0])
+                if '-' in info[2]:
+                    rem=info[2].strip()
+                    rem=rem.split(' ')
+                    commit['lines_removed']=int(rem[0])
+            else:
+                if '+' in info[1]:
+                    commit['change_type']='ModificationType.ADD'
+                    add=info[1].strip()
+                    add=add.split(' ')
+                    commit['lines_added']=int(add[0])
+                    commit['lines_removed']=0
+                elif '-' in info[1]:
+                    commit['change_type']='ModificationType.DELETE'
+                    rem=info[1].strip()
+                    rem=rem.split(' ')
+                    commit['lines_removed']=int(rem[0])
+                    commit['lines_added']=0
+            if lines[idx-1] and "=>" in lines[idx-1]:
+                #check if file renaming was done
+                commit['change_type']='ModificationType.RENAME'  
+    if len(commit)!=0:   
+        commits.append(commit) 
+    return commits
 
 
 
@@ -287,9 +385,6 @@ if __name__=="__main__":
     if not project_exists(project):
         print("project does not exist")
         exit()
-    
-    #initiate repo
-    repo=pydriller.RepositoryMining(path)
 
     # get all the files from database
     files=get_all_files(project)
@@ -300,23 +395,35 @@ if __name__=="__main__":
         #parse local filepath
         path=f["filepath_on_coverity"]
         path=path[1:] #cut the beginning slash
-        repo._filepath=path
         print(path)
-        for commit in repo.traverse_commits():
-            #check if the commit is already in the database through hash
-            sha=commit.hash
+        commits=mine_gitlog(path)
+        print(len(commits))
+        for commit in commits:
+            sha=commit["hash"]
             if commitId_ifExists(sha)==None:
-                add_commit(commit)
-            commit_id=commitId_ifExists(sha)
-            #add file and commit pair
+                add_commit(commit) #not adding affected files count, lines added, and removed for now
+            commit_id=commitId_ifExists(sha)   
             file_id=f["idfiles"]
             if filecommitId_ifExists(file_id,commit_id)==None:
-                add_filecommits(file_id,path,commit_id)
+                add_filecommits(file_id,path,commit_id,commit)
             filecommit_id = filecommitId_ifExists(file_id,commit_id)
-            #look for diff if we get a filecommit id
-            if diffId_ifExists(filecommit_id)==None and filecommit_id:
-                add_diff(commit,path,filecommit_id)
-            
+        print(f['idfiles'])
+            #adding no diff
+        # for commit in repo.traverse_commits():
+        #     #check if the commit is already in the database through hash
+        #     sha=commit.hash
+        #     if commitId_ifExists(sha)==None:
+        #         add_commit(commit)
+        #     commit_id=commitId_ifExists(sha)
+        #     #add file and commit pair
+        #     file_id=f["idfiles"]
+        #     if filecommitId_ifExists(file_id,commit_id)==None:
+        #         add_filecommits(file_id,path,commit_id,commit)
+        #     filecommit_id = filecommitId_ifExists(file_id,commit_id)
+        #     #look for diff if we get a filecommit id
+        #     if diffId_ifExists(filecommit_id)==None and filecommit_id:
+        #         add_diff(commit,path,filecommit_id)
+    print(datetime.datetime.now())       
 
 
             
