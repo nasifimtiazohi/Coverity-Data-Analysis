@@ -10,7 +10,7 @@ import os
 #read the project name
 project=str(sys.argv[1])
 path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
-os.chdir(path)
+
 
 #open sql connection 
 connection = pymysql.connect(host='localhost',
@@ -23,7 +23,7 @@ connection = pymysql.connect(host='localhost',
 
 
 f= open(project+ "_analysis.txt","w")
-
+os.chdir(path)
 
 def execute(query):
     with connection.cursor() as cursor:
@@ -66,28 +66,39 @@ def get_alert_infos():
         query='''select * from alerts where is_invalid=0 and stream="''' + project + '''";'''
         all_alerts=execute(query)
         total_alerts=len(all_alerts)
+        f.write("count of total alert: "+str(total_alerts)+ '\n')
+        
+        query='''select count(*) as c from alerts where status="Fixed" and is_invalid=0 and stream="''' + project + '''";'''
+        t=execute(query)[0]['c']
+        f.write("eliminated bug: "+str(t)+" ")
+        t=(float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t)+ '\n')
+        
 
         query='''select count(*) as c from alerts where is_invalid=0 and classification= "Bug" and stream="''' + project + '''";'''
-        marked_bug=(float(execute(query)[0]['c'])/ float(total_alerts))*100
+        t=execute(query)[0]['c']
+        f.write("marked bugs: "+str(t)+" ")
+        t=(float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t)+ '\n')
 
         query='''select count(*) as c from alerts where is_invalid=0 and classification= "False Positive" and stream="''' + project + '''";'''
-        marked_fp=(float(execute(query)[0]['c'])/ float(total_alerts))*100
+        t=execute(query)[0]['c']
+        f.write("false positive: "+str(t)+" ")
+        t=(float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t)+ '\n')
 
         query='''select count(*) as c from alerts where is_invalid=0 and classification= "Intentional" and stream="''' + project + '''";'''
-        marked_intentional=(float(execute(query)[0]['c'])/ float(total_alerts))*100
-
-        query='''select count(*) as c from alerts where status="Fixed" and is_invalid=0 and stream="''' + project + '''";'''
-        eliminated=(float(execute(query)[0]['c'])/ float(total_alerts))*100
+        t=execute(query)[0]['c']
+        f.write("intentional: "+str(t)+" ")
+        t=(float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t)+ '\n')
 
         query='''select count(*) as c from alerts where status="New" and is_invalid=0 and stream="''' + project + '''";'''
-        alive=(float(execute(query)[0]['c'])/ float(total_alerts))*100
+        t=execute(query)[0]['c']
+        f.write("alive: "+str(t)+" ")
+        t=(float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t)+ '\n')
 
-        f.write("count of total alert: "+str(total_alerts)+ '\n')
-        f.write("count of eliminated: "+str(eliminated)+ '\n')
-        f.write("count of marked bug: "+str(marked_bug)+ '\n')
-        f.write("count of marked FP: "+str(marked_fp)+ '\n')
-        f.write("count of marked intetional: "+str(marked_intentional)+ '\n')
-        f.write("count of alive alerts: "+str(alive)+ '\n')
 
 def alerts_from_other_files():
         f.write('\n\n')
@@ -112,7 +123,7 @@ def alerts_from_other_files():
 
         query="select * from alerts where is_invalid=3 and stream='"+project+"';"
         results=execute(query)
-        f.write(str(len(results))+'\n')
+        f.write("number of other files alerts are: "+str(len(results))+'\n')
         
         #generate general reports
         query="select distinct status, count(*) as c from alerts where is_invalid=3 and stream='"+project+"' group by status;"
@@ -154,14 +165,14 @@ def search_suppression_keywords_in_commit_diffs(sha,filepath):
                                                 return keyword
                 else:
                         pass
-        return False
+        return None
 
 
         
 
 # first look for file_activity with the main affected file
-def main_file_fix_activity(all_alerts):
-        query=query="select * from alerts where is_invalid=0 ans status='Fixed' and stream='"+project+"';"
+def main_file_fix_activity():
+        query=query="select * from alerts where is_invalid=0 and status='Fixed' and stream='"+project+"';"
         all_alerts=execute(query)
         for alert in all_alerts:
                 aid=alert["idalerts"]
@@ -178,8 +189,10 @@ def main_file_fix_activity(all_alerts):
                 fid=alert["file_id"]
                 
                 #look at if there's a commit within above two dates
-                query='''select * from filecommits f join commits c on f.commit_id=c.idcommits where
-                        f.file_id= ''' + str(fid) + ''' and c.commit_date >="''' +last_detected_date+ \
+                query='''select * from filecommits fc join commits c on fc.commit_id=c.idcommits 
+                        join files f on f.idfiles=fc.file_id
+                        where
+                        fc.file_id= ''' + str(fid) + ''' and c.commit_date >="''' +last_detected_date+ \
                         '''" and c.commit_date <="''' +first_not_detected_anymore_date +'";'
                 results=execute(query)
 
@@ -192,12 +205,29 @@ def main_file_fix_activity(all_alerts):
                                 c['sha']=item['sha']
                                 c['filepath']=item['filepath_on_coverity'][1:]
                                 commits.append(c)
+                        suppress_commit=None
                         for c in commits:
                                 #look for suppression keywords in commit diff
-                                pass
-                        #query="insert into alert_commit_tracking values(" +str(aid)+",null,'yes',null,"+cid+");"
+                                suppression_word=search_suppression_keywords_in_commit_diffs(c['sha'],c['filepath'])
+                                if suppression_word!=None:
+                                        suppress_commit=c['commit_id']
+                                        break
+                        if suppress_commit==None:
+                                #developer fix
+                                if len(commits)==1:
+                                        query="insert into alert_commit_tracking values(" +str(aid)+",null,'yes',null,"+str(commits[0]['commit_id'])+",null,null);"
+                                else:
+                                        temp=[]
+                                        for c in commits:
+                                                temp.append(str(c['commit_id']))
+                                        query="insert into alert_commit_tracking values(" +str(aid)+",null,'yes',null,null,'"+','.join(temp)+"',null);"
+                        else:
+                                temp=str(suppress_commit)+','+suppression_word
+                                query="insert into alert_commit_tracking values(" +str(aid)+",null,'no',null,null,null,'"+temp+"');"
+                        
                 else:
-                        query="insert into alert_commit_tracking values(" +str(aid)+",null,'no',null,null,null.null);"
+                        query="insert into alert_commit_tracking values(" +str(aid)+",null,'no',null,null,null,null);"
+                execute(query)
                 # try:
                 #         print(query)
                 #         execute(query)
@@ -275,10 +305,77 @@ def all_file_fix_activity():
                                         commits.append(item)
                 print(aid,commits)
 
+def developer_fix_report():
+        query=query=query="select count(*) as c from alerts where is_invalid=0 and stream='"+project+"';"
+        total=execute(query)[0]['c']
+
+        query='''select count(*) as c from alert_commit_tracking ac 
+                join alerts a 
+                on ac.alert_id=a.idalerts
+                where ac.file_activity_around_fix="yes" 
+                and a.stream="'''+project+'''";'''
+        fix=execute(query)[0]['c']
+
+        query='''select count(*) as c from alert_commit_tracking ac 
+                join alerts a 
+                on ac.alert_id=a.idalerts
+                where ac.fix_commit_id is not null
+                and a.stream="'''+project+'''";'''
+        fix_commit=execute(query)[0]['c']
+
+        unactionable=total-fix
+
+        f.write("\ndeveloper fix :"+str(fix)+" "+str((float(fix)/total)*100)+'\n')
+        f.write("tracked fix commit for :"+str(fix_commit)+" "+str((float(fix_commit)/total)*100)+'\n')
+        f.write("unactionable :"+str(unactionable)+" "+str((float(unactionable)/total)*100)+'\n')
+
+def actionability_report():
+        with connection.cursor() as cursor:
+                query= '''create temporary table actionable
+                select * from alert_commit_tracking ac 
+                join alerts a 
+                on ac.alert_id=a.idalerts
+                where ac.file_activity_around_fix="yes" 
+                and a.stream="'''+project+'''";'''
+                cursor.execute(query)
+
+                query= '''create temporary table unactionable
+                select * from alert_commit_tracking ac 
+                join alerts a 
+                on ac.alert_id=a.idalerts
+                where ac.file_activity_around_fix="no" 
+                and a.stream="'''+project+'''";'''
+                cursor.execute(query)
+
+                query='''select datediff(s.date,a.first_detected) as diff
+                        from actionable a
+                        join snapshots s
+                        on a.last_snapshot_id=s.idsnapshots;'''
+                cursor.execute(query)
+                results=cursor.fetchall()
+                actionable_lifespan=[]
+                for item in results:
+                        actionable_lifespan.append(item['diff'])
+                print("median lifespan of actionable alerts: "+str(np.median(actionable_lifespan)))
+
+                query='''select datediff(s.date,a.first_detected) as diff
+                        from unactionable a
+                        join snapshots s
+                        on a.last_snapshot_id=s.idsnapshots;'''
+                cursor.execute(query)
+                results=cursor.fetchall()
+                unactionable_lifespan=[]
+                for item in results:
+                        unactionable_lifespan.append(item['diff'])
+                print(actionable_lifespan)
+                print(unactionable_lifespan)
+                print("median lifespan of unactionable alerts: "+str(np.median(unactionable_lifespan)))
 if __name__ == "__main__":
         # get_general_report()
+        # alerts_from_other_files()
         # get_alert_infos()
-        #alerts_from_other_files()
-        print(search_suppression_keywords_in_commit_diffs("7741d8254e0e15be91279a74627090f134412d0b","xbmc/utils/StringUtils.h"))
+        # developer_fix_report()
+        actionability_report()
+        
 
 f.close()

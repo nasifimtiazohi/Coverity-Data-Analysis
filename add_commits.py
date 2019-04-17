@@ -57,8 +57,11 @@ def project_exists(project):
     return False
 
 def get_all_files(project):
-    # if firefox and less than 3826
-    # if linux and less than 12034
+#     (ProgrammingError(1064, u'You have an error in your SQL syntax; check the manual that corresponds to your
+#      MySQL server version for the right syntax to use near \'False","Firefox")\' at line 1'), 'insert into commits values 
+#          (null,"1066acafbbc4f05de897a5a35e702c49f5108a26","Jeff Walden","jwalden@mit.edu","2010-03-26 18:01:54","Jeff Walden","jwalden@mit.edu","2010-03-26 18:01:54","Backed out changeset e7065853ef79; I\'ll be repushing this incrementally, attempting to find the precise place where things go bad, in the near future.  Happy days are here again!  :-\\",null,null,null,"False","Firefox");')
+# (InternalError(1366, u"Incorrect integer value: 'None' for column 'commit_id' at row 1"), 'insert into filecommits values 
+# (null,5184,"None","ModificationType.MODIFY",5,5);')
     with connection.cursor() as cursor:
         query='''select distinct f.idfiles, f.filepath_on_coverity
                 from alerts a
@@ -66,6 +69,9 @@ def get_all_files(project):
                 on a.file_id=f.idfiles
                 where a.stream="''' + str(project) + \
                 '''" and a.is_invalid=0 
+                and f.idfiles not in (
+                    select distinct file_id from filecommits
+                )
                 and f.idfiles > ''' + str(start)+ \
                 " and f.idfiles <= "+str(end)
         if project=='Firefox':
@@ -130,6 +136,7 @@ def add_commit(commit):
     for a in arguments:
         if type(a)==str:
             a=connection.escape_string(a)
+            a=a.replace('\\','')
             a=a.replace(chr(92),'')
 
     query="insert into commits values (null,"
