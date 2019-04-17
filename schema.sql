@@ -155,6 +155,8 @@ CREATE TABLE `coverityscan`.`alert_commit_tracking` (
   `file_activity_around_fix` VARCHAR(45) NULL,
   `intro_commit_id` INT NULL,
   `fix_commit_id` INT NULL,
+  `fix_commits` LONGTEXT NULL AFTER `fix_commit_id`,
+  `suppression` LONGTEXT NULL AFTER `fix_commits`;
   PRIMARY KEY (`alert_id`));
 
 

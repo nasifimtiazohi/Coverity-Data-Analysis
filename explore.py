@@ -48,9 +48,7 @@ diff="@@ -195,24 +195,6 @@ bool CPVRRecordings::HasDeletedRadioRecordings() cons
 
 
 
-import re
-diff=re.sub('[@]{3,}','',diff)
-print(diff)
+
     
 
 

@@ -12,7 +12,8 @@ import dateutil.parser as dp
 #read command line arguments
 project=sys.argv[1]
 path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
-last_checked=sys.argv[3]
+start=sys.argv[3]
+end=sys.argv[4]
 os.chdir(path)
 
 
@@ -56,6 +57,8 @@ def project_exists(project):
     return False
 
 def get_all_files(project):
+    # if firefox and less than 3826
+    # if linux and less than 12034
     with connection.cursor() as cursor:
         query='''select distinct f.idfiles, f.filepath_on_coverity
                 from alerts a
@@ -63,7 +66,24 @@ def get_all_files(project):
                 on a.file_id=f.idfiles
                 where a.stream="''' + str(project) + \
                 '''" and a.is_invalid=0 
-                and f.idfiles > ''' + str(last_checked)+ ";"
+                and f.idfiles > ''' + str(start)+ \
+                " and f.idfiles <= "+str(end)
+        if project=='Firefox':
+            query+= ''' and not (f.filepath_on_coverity  like '/obj-x86_64-pc-linux-gnu%'
+                    or f.filepath_on_coverity  like '/usr%'
+                    or f.filepath_on_coverity like '/rdf%'
+                    or f.filepath_on_coverity  like '/embedding%'
+                    or f.filepath_on_coverity  like '/obj-x86_64-unknown-linux-gnu%'
+                    or f.filepath_on_coverity  like '/obj-coverity%'
+                    or f.filepath_on_coverity  like '/content%'
+                    or f.filepath_on_coverity  like '/webapprt%'
+                    or f.filepath_on_coverity  like '/jpeg%'
+                    or f.filepath_on_coverity  like '/home/scan%'
+                    or f.filepath_on_coverity  like '/dbm%'
+                    or f.filepath_on_coverity  like '/xpinstall%'
+                    or f.filepath_on_coverity  like '/obj%'
+                    or f.filepath_on_coverity  like '/directory%'
+                    or f.filepath_on_coverity  like '/mailnews%')'''
         #query="select * from files where project='"+str(project)+"' and idfiles >" + str(last_checked)+";"
         cursor.execute(query)
         results=cursor.fetchall()

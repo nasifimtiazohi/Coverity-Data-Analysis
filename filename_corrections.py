@@ -22,7 +22,8 @@ query="select * from files where project='"+project+"';"
 
 results=execute(query)
 
-i=0
+#CORRECTION FOR KODI
+# i=0
 # for item in results:
 #     temp=item['filepath_on_coverity']
 #     cut='/home/jenkins/workspace/LINUX-64-CoverityScan'
@@ -33,13 +34,54 @@ i=0
 #         execute(query)
 #         i+=1
 # print(i)
+
 temp=[]
+a=[]
 for item in results:
-    t=item['filepath_on_coverity']
-    t=t.split("/")
-    t=t[1]
-    if t not in temp:
-        temp.append(t)
+    full=item['filepath_on_coverity']
+    t=full.split("/")
+    if t[1] not in temp:
+        temp.append(t[1])
+    if t[1]=='home':
+        print(full)
+
 print(temp)
 
-    
+#CORRECTIONS FOR LINUX
+# i=0
+# for item in results:
+#     temp=str(item['filepath_on_coverity'])
+#     cut='/linux'
+#     if temp.startswith(cut):
+#         temp=temp[6:]
+#         fid=str(item['idfiles'])
+#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+#         execute(query)
+#         i+=1
+# print(i)
+
+
+#CORRECTIONS FOR FIREFOX
+# i=0
+# for item in results:
+#     temp=str(item['filepath_on_coverity'])
+#     cut='/mozilla'
+#     if temp.startswith(cut):
+#         temp=temp[8:]
+#         fid=str(item['idfiles'])
+#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+#         execute(query)
+#         i+=1
+# print(i)
+
+# i=0
+# for item in results:
+#     temp=str(item['filepath_on_coverity'])
+#     cut='/base/src/mozilla'
+#     if temp.startswith(cut):
+#         temp=temp[17:]
+#         fid=str(item['idfiles'])
+#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+#         execute(query)
+#         i+=1
+# print(i)   
