@@ -59,19 +59,28 @@ def project_exists(project):
 def get_all_files(project):
 #     (ProgrammingError(1064, u'You have an error in your SQL syntax; check the manual that corresponds to your
 #      MySQL server version for the right syntax to use near \'False","Firefox")\' at line 1'), 'insert into commits values 
-#          (null,"1066acafbbc4f05de897a5a35e702c49f5108a26","Jeff Walden","jwalden@mit.edu","2010-03-26 18:01:54","Jeff Walden","jwalden@mit.edu","2010-03-26 18:01:54","Backed out changeset e7065853ef79; I\'ll be repushing this incrementally, attempting to find the precise place where things go bad, in the near future.  Happy days are here again!  :-\\",null,null,null,"False","Firefox");')
+#          (null,"1066acafbbc4f05de897a5a35e702c49f5108a26","Jeff Walden","jwalden@mit.edu","2010-03-26 18:01:54","Jeff Walden",
+# "jwalden@mit.edu","2010-03-26 18:01:54","Backed out changeset e7065853ef79; I\'ll be repushing this incrementally,
+#  attempting to find the precise place where things go bad, in the near future.  Happy days are here again!  :-\\",null,null,null,"False","Firefox");')
 # (InternalError(1366, u"Incorrect integer value: 'None' for column 'commit_id' at row 1"), 'insert into filecommits values 
 # (null,5184,"None","ModificationType.MODIFY",5,5);')
+
+# and 
+#                 f.idfiles not in (
+#                     select distinct file_id from filecommits
+#                 )
+
+#Linux starting from 31052
     with connection.cursor() as cursor:
         query='''select distinct f.idfiles, f.filepath_on_coverity
                 from alerts a
                 join files f
                 on a.file_id=f.idfiles
                 where a.stream="''' + str(project) + \
-                '''" and a.is_invalid=0 
+                '''" and a.is_invalid=0 and a.status='Fixed'
                 and f.idfiles not in (
-                    select distinct file_id from filecommits
-                )
+                   select distinct file_id from filecommits
+                 )
                 and f.idfiles > ''' + str(start)+ \
                 " and f.idfiles <= "+str(end)
         if project=='Firefox':
@@ -137,7 +146,6 @@ def add_commit(commit):
         if type(a)==str:
             a=connection.escape_string(a)
             a=a.replace('\\','')
-            a=a.replace(chr(92),'')
 
     query="insert into commits values (null,"
     for idx, arg in enumerate(arguments):
@@ -156,7 +164,7 @@ def add_commit(commit):
     query+=");"
     with connection.cursor() as cursor:
         try:
-            # print(query)
+            query=query.replace("\\","")
             cursor.execute(query)
         except Exception as e:
             print(e,query)
@@ -272,9 +280,12 @@ def mine_gitlog(filepath):
     end_date= temp['end_date']
     try:
         lines = subprocess.check_output(
-            shlex.split('git log --follow --pretty=fuller --stat --after="'+start_date+ \
-                ' 00:00" --before="'+end_date+' 23:59" -- '+filepath), 
-            stderr=subprocess.STDOUT
+            shlex.split('git log --follow --pretty=fuller --stat \
+            --after="'+start_date+ 
+            ' 00:00" --before="'+end_date+' 23:59"  \
+            -- '+filepath), 
+            stderr=subprocess.STDOUT,
+            encoding="437"
             ).split('\n')
     except Exception as e:
         print(e,"file does not exist?")
@@ -416,6 +427,7 @@ if __name__=="__main__":
     # get all the files from database
     files=get_all_files(project)
 
+    print(len(files))
     for f in files:
         #get fid and see if it is already covered
 
@@ -436,20 +448,8 @@ if __name__=="__main__":
             filecommit_id = filecommitId_ifExists(file_id,commit_id)
         print(f['idfiles'])
             #adding no diff
-        # for commit in repo.traverse_commits():
-        #     #check if the commit is already in the database through hash
-        #     sha=commit.hash
-        #     if commitId_ifExists(sha)==None:
-        #         add_commit(commit)
-        #     commit_id=commitId_ifExists(sha)
-        #     #add file and commit pair
-        #     file_id=f["idfiles"]
-        #     if filecommitId_ifExists(file_id,commit_id)==None:
-        #         add_filecommits(file_id,path,commit_id,commit)
-        #     filecommit_id = filecommitId_ifExists(file_id,commit_id)
-        #     #look for diff if we get a filecommit id
-        #     if diffId_ifExists(filecommit_id)==None and filecommit_id:
-        #         add_diff(commit,path,filecommit_id)
+       
+        
     print(datetime.datetime.now())       
 
 

@@ -17,6 +17,7 @@
 *.pyc
 .vscode
 *.txt
+*.xlsx
 
 ## Intermediate documents:
 *.dvi

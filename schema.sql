@@ -159,6 +159,23 @@ CREATE TABLE `coverityscan`.`alert_commit_tracking` (
   `suppression` LONGTEXT NULL AFTER `fix_commits`;
   PRIMARY KEY (`alert_id`));
 
+CREATE TABLE `coverityscan`.`actionability` (
+  `alert_id` INT NOT NULL,
+  `actionability` INT NULL,
+  `marked_bug` VARCHAR(45) NULL,
+  `file_activity_around_fix` VARCHAR(45) NULL,
+  `single_fix_commit` INT NULL,
+  `fix_commits` LONGTEXT NULL,
+  `file_deleted` VARCHAR(45) NULL,
+  `delete_commit` INT NULL AFTER `file_deleted`,
+  `file_renamed` VARCHAR(45) NULL,
+  `rename_commit` INT NULL AFTER `file_renamed`,
+  `transfered_alert_id` LONGTEXT NULL,
+  `suppression` VARCHAR(45) NULL,
+  `suppress_commit` INT NULL,
+  `suppress_keyword` VARCHAR(45) NULL,
+  PRIMARY KEY (`alert_id`));
+
 
 
 
