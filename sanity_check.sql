@@ -1,3 +1,4 @@
+-- examples sqls to do some sanity checking on database
 select filepath_on_coverity, count(*)
 from files 
 where project = 'Kodi'

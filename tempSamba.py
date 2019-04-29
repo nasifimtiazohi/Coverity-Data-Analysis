@@ -1,4 +1,5 @@
-''' add alerts data from coverity'''
+'''pain in the ass work for transferring samba
+data from old database because coverity scan is down'''
 import pymysql
 import datetime
 import requests
@@ -7,11 +8,10 @@ import os
 import time
 import dateutil.parser
 import sys
-
+import pandas as pd
 
 #read system arguments
 project_name=sys.argv[1]
-datafile=sys.argv[2]
 
 def is_number(n):
     try:
@@ -68,20 +68,29 @@ def fileId_ifexists(filename):
 
 
 if __name__=="__main__":
-    #open xml file
-    import xml.etree.ElementTree as ET
-    tree = ET.parse(datafile)
-    root = tree.getroot()
-
+    query='''select * from coverity.alerts a
+            join coverity.bug_types b
+            on a.bug_type=b.idbug_types
+            where a.stream='Samba' order by cid desc;'''
+    df=pd.read_sql(query,connection)
+    datalist=[]
+    for row in df.itertuples():
+        d={}
+        for k in df.keys():
+            d[k]=row[df.columns.get_loc(k)+1]
+        datalist.append(d)
     errors=open("errors.txt","w")
 
-    for child in root:
-        data=child.attrib
 
-        #replace blank data with null
+    for data in datalist:
+        #replace blank data with nullc
         for k in data.keys():
-            if data[k]=="":
+            if data[k]=="" or data[k]==None or str(data[k])=="NaT" or str(data[k])=="nan":
                 data[k]="null"
+        
+        if is_number(data['cwe']):
+            data['cwe']=int(data['cwe'])
+
         
         #handle bug_type
         if typeId_ifexists(data["type"])==None:
@@ -96,12 +105,13 @@ if __name__=="__main__":
         
         
         #add alerts
+        
         arguments=[
             data["cid"], 
             project_name,
             str(bugTypeId), 
             data["status"] ,
-            datetime.datetime.strptime(data["firstDetected"],'%m/%d/%y').strftime('%y/%m/%d'),
+            data["firstDetected"].strftime('%y-%m-%d'),
             data["owner"],
             data["classification"],
             data["severity"],

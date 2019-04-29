@@ -1,3 +1,4 @@
+'''add snapshots from coverity'''
 import pymysql
 import datetime
 import sys
@@ -35,6 +36,7 @@ for child in root:
 
 #turn into oldest to newest
 datalist.reverse()
+    
 
 past_snapshot_id="null"
 #we read it from newest to oldest

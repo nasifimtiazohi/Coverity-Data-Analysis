@@ -1,3 +1,6 @@
+'''after correcting for filenames,
+ther would be duplicate files in the files table,
+correct them, keep the "proper" (see logic) one '''
 import pymysql
 import sys
 

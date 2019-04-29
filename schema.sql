@@ -159,6 +159,18 @@ CREATE TABLE `coverityscan`.`alert_commit_tracking` (
   `suppression` LONGTEXT NULL AFTER `fix_commits`;
   PRIMARY KEY (`alert_id`));
 
+CREATE TABLE `coverityscan`.`fix_complexity` (
+  `commit_id` INT NOT NULL,
+  `alert_id` INT NOT NULL,
+  `file_count` FLOAT NULL,
+  `net_loc_change` FLOAT NULL,
+  `infile_loc_change` FLOAT NULL,
+  `net_logical_change` FLOAT NULL,
+  `infile_logical_change` FLOAT NULL,
+  `total_fixed_alerts` INT NULL,
+ `infile_fixed_alerts` INT NULL,
+  PRIMARY KEY (`commit_id`, `alert_id`));
+
 CREATE TABLE `coverityscan`.`actionability` (
   `alert_id` INT NOT NULL,
   `actionability` INT NULL,
@@ -167,9 +179,9 @@ CREATE TABLE `coverityscan`.`actionability` (
   `single_fix_commit` INT NULL,
   `fix_commits` LONGTEXT NULL,
   `file_deleted` VARCHAR(45) NULL,
-  `delete_commit` INT NULL AFTER `file_deleted`,
+  `delete_commit` INT NULL  ,
   `file_renamed` VARCHAR(45) NULL,
-  `rename_commit` INT NULL AFTER `file_renamed`,
+  `rename_commit` INT NULL  ,
   `transfered_alert_id` LONGTEXT NULL,
   `suppression` VARCHAR(45) NULL,
   `suppress_commit` INT NULL,

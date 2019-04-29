@@ -11,11 +11,8 @@ mainpath=os.getcwd()
 #read the project name
 project=str(sys.argv[1])
 path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
+start_ind=str(sys.argv[3])
 
-#check
-# file reanaming backend/manager/modules/aaa/src/main/java/org/ovirt/engine/core/aaa/filters/SsoRestApiNegotiationFilter.java backend/manager/modules/aaa/src/main/java/org/ovirt/engine/core/aaa/filters/SsoRestApiNegotiationFilter.java rename backend/manager/modules/aaa/src/main/jav
-# a/org/ovirt/engine/core/aaa/filters/{SSORestApiNegotiationFilter.java => SsoRestApiNegotiationFilter.java} (91%)
-# file reanaming backend/manager/modules/dal/src/test/java/org/ovirt/engine/core/dao/VmStaticDaoTest.java backend/manager/modules/dal/src/test/java/org/ovirt/engine/core/dao/VmStaticDaoTest.java rename backend/manager/modules/dal/src/test/java/org/ovirt/engine/core/dao/{VmStaticDAOTest.java => VmStaticDaoTest.java} (99%)
 
 #open sql connection 
 connection = pymysql.connect(host='localhost',
@@ -27,7 +24,7 @@ connection = pymysql.connect(host='localhost',
 
 
 
-f= open(project+ "_analysis.txt","w")
+f= open(project+ "_new_analysis.txt","w")
 os.chdir(path)
 
 def execute(query):
@@ -124,7 +121,10 @@ def alerts_from_other_files():
                 on f.idfiles=fc.file_id
                 where f.project="''' +project+'''")
                 and f.project = "''' +project+ '''" and a.is_invalid=0)as sub);'''
-        execute(query)
+        with connection.cursor() as cursor:
+                cursor.execute(query)
+                print("alerts from other files count affected: ",cursor.rowcount)
+
 
         query="select * from alerts where is_invalid=3 and stream='"+project+"';"
         results=execute(query)
@@ -140,11 +140,11 @@ def alerts_from_other_files():
         temp=execute(query)
         f.write(str(temp)+'\n\n\n')
 
-        #write the name of the other files
-        query="select f.filepath_on_coverity from alerts a join files f on a.file_id=f.idfiles where a.is_invalid=3 and a.stream='"+project+"';"
-        temp=execute(query)
-        for t in temp:
-                f.write(str(t)+'\n')
+        # #write the name of the other files
+        # query="select f.filepath_on_coverity from alerts a join files f on a.file_id=f.idfiles where a.is_invalid=3 and a.stream='"+project+"';"
+        # temp=execute(query)
+        # for t in temp:
+        #         f.write(str(t)+'\n')
         
 def search_suppression_keywords_in_commit_diffs(sha,filepath):
         keywords=[
@@ -208,39 +208,51 @@ def new_file_id_after_renaming(sha,filepath):
 
         filename=filepath.split("/")[-1]
         for nextLine in lines:
-                if filename in nextLine and 'rename' in nextLine:
+                # renaming info in commit message can ruin string matching logic
+                # however apartfrom rename, filename, and =>; git info also contain proportion with a %
+                # so checking all those 4 conditions in trying to be more accurate 
+                if filename in nextLine and 'rename' in nextLine and '=>' in nextLine and '%' in nextLine:
                         rename_line=nextLine
-        # try:
-        matchlist=re.findall('{[^{}]*}',rename_line)
-        if len(matchlist)!=1:
-                #need to discover the logic here
-                print ("check ",sha,filepath,project,rename_line)
-
         try:
-                temp=re.search("{(.*)}",rename_line).group(1)
-                temp=temp.split("=>")
-                old_file=temp[0].strip()
-                new_file=temp[1].strip()
-                rename_line=rename_line.strip()
-                start=rename_line.find('{')
-                end=rename_line.find('}')
-                new_filepath=rename_line[:start]+new_file+rename_line[end+1:] 
-                new_filepath=new_filepath.replace('//','/')
-                new_filepath=new_filepath.split(' ')[1].strip()
-                query="select idfiles from files where filepath_on_coverity='/"+new_filepath+"' and project='"+project+"';"
-                return execute(query)[0]['idfiles']
+                matchlist=re.findall('{[^{}]*}',rename_line)
+                #being more restrictive (prolly not necessary) in having {} in this logic
+                if len(matchlist)==1 and '{' in rename_line and '}' in rename_line:
+                        temp=re.search("{(.*)}",rename_line).group(1)
+                        temp=temp.split("=>")
+                        old_file=temp[0].strip()
+                        new_file=temp[1].strip()
+                        rename_line=rename_line.strip()
+                        start=rename_line.find('{')
+                        end=rename_line.find('}')
+                        new_filepath=rename_line[:start]+new_file+rename_line[end+1:] 
+                        new_filepath=new_filepath.replace('//','/')
+                        new_filepath=new_filepath.split(' ')[1].strip()
+                        query="select idfiles from files where filepath_on_coverity='/"+new_filepath+"' and project='"+project+"';"
+                        return execute(query)[0]['idfiles']
+                #when the full name or filepath has been changed 
+                elif len(matchlist)==0:
+                        rename_line=rename_line.strip()
+                        temp=rename_line.split('=>')
+                        old_file=temp[0].strip()
+                        old_file=old_file.split(' ')[1].strip()
+                        new_file=temp[1].strip()
+                        new_filepath=new_file.split(' ')[0].strip()     
+                        query="select idfiles from files where filepath_on_coverity='/"+new_filepath+"' and project='"+project+"';"
+                        return execute(query)[0]['idfiles']
+                else:
+                        return None
         except Exception as e:
-                print(e)
+                print("exception in rename discovery",e,rename_line)
                 return None
 
 # first look for file_activity with the main affected file
 def main_file_actionability():
-        query=query="select * from alerts where is_invalid=0 and status='Fixed' and stream='"+project+"';"
+        query=query="select * from alerts where is_invalid=0 and status='Fixed' and stream='"+project+"' and idalerts>= "+start_ind
         #"' and idalerts="+str(alert_id)
         all_alerts=execute(query)
         for alert in all_alerts:
                 aid=alert["idalerts"]
-
+                
                 #initialize actionability columns with default values
                 actionability=0
                 marked_bug=None
@@ -262,12 +274,21 @@ def main_file_actionability():
 
 
                 last_snapshot=str(alert["last_snapshot_id"])
+                print(aid,last_snapshot)
                 ## get last detected dates
-                query="select date from snapshots where idsnapshots="+last_snapshot+" and stream='" +project +"';"
-                last_detected_date=execute(query)[0]["date"]
+                query="select * from snapshots where idsnapshots="+last_snapshot+" and stream='" +project +"';"
+                temp=execute(query)[0]
+                if temp['code_version_date']!=None:
+                        last_detected_date=temp['code_version_date']
+                else:
+                        last_detected_date=temp["date"]
                 last_detected_date=last_detected_date.strftime("%Y-%m-%d") +" 00:00:00" #to maintain start of the day
-                query="select date from snapshots where last_snapshot="+last_snapshot+" and stream='" +project +"';"
-                first_not_detected_anymore_date=execute(query)[0]["date"]
+                query="select * from snapshots where last_snapshot="+last_snapshot+" and stream='" +project +"';"
+                temp=execute(query)[0]
+                if temp['code_version_date']!=None:
+                        first_not_detected_anymore_date=temp['code_version_date']
+                else:
+                        first_not_detected_anymore_date=temp["date"]
                 first_not_detected_anymore_date=first_not_detected_anymore_date.strftime("%Y-%m-%d") +" 23:59:59" #to maintain end of the day
 
                 fid=alert["file_id"]
@@ -332,7 +353,7 @@ def main_file_actionability():
                                                 temp=[]
                                                 for c in commits:
                                                         temp.append(str(c['commit_id']))
-                                                        if (bool(re.search('coverity',c['msg'],re.I))) or (bool(re.search('CID',c['msg'],re.I))):
+                                                        if (bool(re.search('coverity',c['msg'],re.I))) or (bool(re.search('CID[\s0-9]',c['msg'],re.I))):
                                                                 single_fix_commit=str(c['commit_id'])
                                                 fix_commits=','.join(temp)
                         
@@ -454,6 +475,7 @@ def actionability_and_lifespan_report():
                 join alerts a 
                 on a.idalerts=ac.alert_id
                 where ac.actionability = 1
+                and a.is_invalid=0
                 and a.stream="''' + project + '"'
         actionable_count=execute(query)[0]['c']
         
@@ -463,6 +485,7 @@ def actionability_and_lifespan_report():
                 join snapshots s
                 on a.last_snapshot_id=s.idsnapshots
                 where ac.actionability = 1
+                and a.is_invalid=0
                 and a.stream="''' + project + '"'
         results=execute(query)
         temp=[]
@@ -475,6 +498,7 @@ def actionability_and_lifespan_report():
                 from alerts 
                 where stream="'''+project+'''"
                 and status='New'
+                and is_invalid=0
                 and datediff(
                 (select date
                 from snapshots
@@ -498,6 +522,7 @@ def actionability_and_lifespan_report():
                 join snapshots s
                 on a.last_snapshot_id=s.idsnapshots
                 where ac.actionability = 1
+                and a.is_invalid=0
                 and a.classification="Bug"
                 and a.stream="''' + project + '"'
         results=execute(query)
@@ -557,7 +582,7 @@ def manual_validation_file():
                 and (ac.single_fix_commit is not null or ac.fix_commits is not null)
                 and a.stream="'''+project+'''"
                 order by rand()
-                limit 25'''
+                limit 50'''
         results=execute(query)
 
         row=2
@@ -579,7 +604,10 @@ def manual_validation_file():
                         ws1['C'+str(row)]=item['type']
                         ws1['D'+str(row)]=item['filepath_on_coverity']
                         ws1['E'+str(row)]=c['sha']
-                        ws1['F'+str(row)]=c['message']
+                        # if len(commits)>1:
+                        #         ws1['F'+str(row)]="\\b"+c['message'].encode('ascii','ignore')+"\\b0"
+                        # else:
+                        ws1['F'+str(row)]=c['message'].encode('utf-8','ignore').decode()
                         row+=1
 
         ws2=wb.create_sheet("Unactionable Alerts",1)
@@ -596,7 +624,7 @@ def manual_validation_file():
                 and (ac.file_deleted is null and ac.file_renamed is null)
                 and a.stream="'''+project+'''"
                 order by rand()
-                limit 25'''
+                limit 50'''
         results=execute(query)
 
         row=2
@@ -620,7 +648,7 @@ def manual_validation_file():
                 and ac.single_fix_commit is not null
                 and a.stream="'''+project+'''"
                 order by rand()
-                limit 25'''
+                limit 50'''
         results=execute(query)
 
         row=2
@@ -630,17 +658,22 @@ def manual_validation_file():
                 if item['single_fix_commit']!=None:
                         query="select * from commits where idcommits="+str(item['single_fix_commit'])
                         commits.append(execute(query)[0])
-                for c in commits:    
+                for c in commits:   
                         ws3['A'+str(row)]=item['idalerts']
                         ws3['B'+str(row)]=item['cid']
                         ws3['C'+str(row)]=item['type']
                         ws3['D'+str(row)]=item['filepath_on_coverity']
                         ws3['E'+str(row)]=c['sha']
-                        ws3['F'+str(row)]=c['message']
+                        ws3['F'+str(row)]=c['message'].encode('utf-8','ignore').decode()
                         row+=1
 
         wb.save('Project_'+project+'.xlsx')
-
+def is_number(n):
+    try:
+        int(n)
+    except ValueError:
+        return False
+    return True
 def invalidate_file_renamed_alerts():
         '''look for alerts in actionability that has renamed 'yes'
         and invalidate them to 4 in alerts '''
@@ -683,7 +716,7 @@ def file_renaming_info():
                 (select alert_id from actionability 
                 where file_renamed="yes")''' 
         c=execute(query)[0]['c']
-        f.write('the number of alerts that are invalidated due to file renaming is: '+str(c))
+        f.write('the number of alerts that are invalidated due to file renaming is: '+str(c)+'\n')
 
         query='''select count(*) as c
                 from alerts
@@ -693,65 +726,76 @@ def file_renaming_info():
                 where file_renamed="yes"
                 and transfered_alert_id is not null)''' 
         c=execute(query)[0]['c']
-        f.write('the number of alerts that are transfered due to file renaming is: '+str(c))
+        f.write('the number of alerts that are transfered due to file renaming is: '+str(c)+'\n')
 
 def patch_complexity():
+        # revoking this function
         query='''select count(*) as c
                 from actionability ac
                 join alerts a 
                 on a.idalerts=ac.alert_id
                 where a.stream="'''+project +'''"
+                and a.is_invalid=0
                 and ac.single_fix_commit is not null'''
         fix_commit_tracked=execute(query)[0]['c']
         f.write("fix commit tracked for alerts: "+str(fix_commit_tracked)+'\n')
 
-        query='''select * from
-                (select distinct ac.single_fix_commit, count(*)  as c
-                from actionability ac
-                join alerts a
-                on ac.alert_id=a.idalerts 
+        
+
+        query='''select fc.*
+                from alerts a
+                join actionability ac
+                on a.idalerts=ac.alert_id
+                join fix_complexity fc
+                on fc.alert_id=ac.alert_id
+                and fc.commit_id=ac.single_fix_commit
                 where a.stream="'''+project+'''"
-                and ac.single_fix_commit is not null
+                and a.status='Fixed'
                 and a.is_invalid=0
-                group by ac.single_fix_commit) as fix
-                join commits c
-                on fix.single_fix_commit=c.idcommits'''
+                and ac.single_fix_commit is not null;'''
         results=execute(query)
         files=[]
-        loc=[]
+        net_loc=[]
+        net_logical=[]
+        in_loc=[]
+        in_logical=[]
         for item in results:
-                c=item['c']
-                file_count=float(item['affected_files_count'])
-                l=float(item['net_lines_added']+item['net_lines_removed'])
-                files.append(file_count/c)
-                loc.append(l/c)
-        files.sort()
-        loc.sort()
+                file_count=float(item['file_count'])/float(item['total_fixed_alerts'])
+                loc_change=float(item['net_loc_change'])/float(item['total_fixed_alerts'])
+                logical_change=float(item['net_logical_change'])/(item['total_fixed_alerts'])
+                files.append(file_count)
+                net_loc.append(loc_change)
+                net_logical.append(logical_change)
+                loc_change=float(item['infile_loc_change'])/float(item['infile_fixed_alerts'])
+                logical_change=float(item['infile_logical_change'])/(item['infile_fixed_alerts'])
+                in_loc.append(loc_change)
+                in_logical.append(logical_change)
         f.write("median affected files: "+str(np.median(files))+'\n')
-        f.write("median net LOC change: "+str(np.median(loc))+'\n')
-
-
-        query='''select * from
-        (select ac.single_fix_commit, a.file_id, count(*)  as c
-        from actionability ac
-        join alerts a
-        on ac.alert_id=a.idalerts 
-        where a.stream="'''+project+'''"
-        and ac.single_fix_commit is not null
-        and a.is_invalid=0
-        group by ac.single_fix_commit,a.file_id) as fix
-        join filecommits fc
-        on fix.single_fix_commit=fc.commit_id'''
-        results=execute(query)
-        loc=[]
-        for item in results:
-                if item['lines_added']==None or item['lines_removed']==None:
-                        continue
-                c=item['c']
-                l=float(item['lines_added']+item['lines_removed'])
-                loc.append(l/c)
-        loc.sort()
-        f.write("median in-file LOC change: "+str(np.median(loc)))
+        f.write("median net LOC change: "+str(np.median(net_loc))+'\n')
+        f.write("median net logical change: "+str(np.median(net_logical))+'\n')
+        f.write("median infile LOC change: "+str(np.median(in_loc))+'\n')
+        f.write("median infile logical change: "+str(np.median(in_logical))+'\n')
+        # query='''select * from
+        # (select ac.single_fix_commit, a.file_id, count(*)  as c
+        # from actionability ac
+        # join alerts a
+        # on ac.alert_id=a.idalerts 
+        # where a.stream="'''+project+'''"
+        # and ac.single_fix_commit is not null
+        # and a.is_invalid=0
+        # group by ac.single_fix_commit,a.file_id) as fix
+        # join filecommits fc
+        # on fix.single_fix_commit=fc.commit_id'''
+        # results=execute(query)
+        # loc=[]
+        # for item in results:
+        #         if item['lines_added']==None or item['lines_removed']==None:
+        #                 continue
+        #         c=item['c']
+        #         l=float(item['lines_added']+item['lines_removed'])
+        #         loc.append(l/c)
+        # loc.sort()
+        # f.write("median in-file LOC change: "+str(np.median(loc)))
 
 def methodology_infos():
         get_general_report()
@@ -759,8 +803,7 @@ def methodology_infos():
         file_renaming_info()
 
 def update_fix_commit_infos():
-        #TODO: one commit that fixes multiple warnings?
-        query='''select distinct ac.single_fix_commit, c.*,f.* from actionability ac
+        query='''select distinct ac.single_fix_commit, c.*,f.*,a.idalerts from actionability ac
                 join alerts a
                 on ac.alert_id=a.idalerts
                 join commits c
@@ -769,45 +812,85 @@ def update_fix_commit_infos():
                 on f.idfiles=a.file_id
                 where ac.single_fix_commit is not null
                 and ac.actionability=1
+                and a.is_invalid=0
+                and a.status='Fixed'
                 and a.stream ="'''+project+'"'
         results=execute(query)
 
-        patches=[]
-        
         for item in results:
-                d={}
                 sha=item['sha']
                 cid=item['idcommits']
                 filepath=item['filepath_on_coverity'][1:]
                 fid=item['idfiles']
-                lines=subprocess.check_output(
-                        shlex.split('git show --stat '+sha),
-                        encoding="437"
-                ).split('\n')
-                line=lines[-2].strip()
-                temp=line.split(',')
-                info=[]
-                query=''
-                if len(temp)==3:
-                        for t in temp:
-                                t=t.strip()
-                                info.append(t.split(' ')[0])
-                        #update commit table
-                        query='update commits set affected_files_count='+info[0]+',net_lines_added='+info[1]+',net_lines_removed='+info[2]+' where idcommits='+str(cid)
-                elif len(temp)==2:
-                        if 'insert' in line:
-                                for t in temp:
-                                        t=t.strip()
-                                        info.append(t.split(' ')[0])
-                                #update commit table
-                                query='update commits set affected_files_count='+info[0]+',net_lines_added='+info[1]+',net_lines_removed=0 where idcommits='+str(cid)
-                        elif 'delet' in line:
-                                for t in temp:
-                                        t=t.strip()
-                                        info.append(t.split(' ')[0])
-                                #update commit table
-                                query='update commits set affected_files_count='+info[0]+',net_lines_added=0,net_lines_removed='+info[1]+' where idcommits='+str(cid)
-                execute(query)  
+                aid=item['idalerts']
+                arguments=process_commit(sha,filepath)
+
+                query='select count(*) as c from actionability where single_fix_commit='+str(cid)
+                total_fixed_alerts=execute(query)[0]['c']
+                arguments.append(total_fixed_alerts)
+
+                query='''select count(*) as c from actionability ac
+                        join alerts a
+                        on a.idalerts = ac.alert_id
+                        where ac.single_fix_commit='''+str(cid)+'''
+                        and a.file_id='''+str(fid)
+                infile_fixed_alerts=execute(query)[0]['c']
+                arguments.append(infile_fixed_alerts)
+
+                query="insert into fix_complexity values("+str(cid)+","+str(aid)+","
+                for idx, arg in enumerate(arguments):
+                    #value cleaning
+                    arg=str(arg) #if not string
+                    arg=arg.strip() #if any whitespace ahead or trailing
+                    #remove illegal character
+                    arg=arg.replace('"',"'")
+
+                    if is_number(arg) or arg=="null":
+                        query+=arg
+                    else:
+                        query+='"'+arg+'"'
+                    if idx<len(arguments)-1:
+                        query+=","
+                query+=");"
+                with connection.cursor() as cursor:
+                    try:
+                        cursor.execute(query)
+                    except Exception as e:
+                        print(e,query)
+        # for item in results:
+        #         d={}
+        #         sha=item['sha']
+        #         cid=item['idcommits']
+        #         filepath=item['filepath_on_coverity'][1:]
+        #         fid=item['idfiles']
+        #         lines=subprocess.check_output(
+        #                 shlex.split('git show --stat '+sha),
+        #                 encoding="437"
+        #         ).split('\n')
+        #         line=lines[-2].strip()
+        #         temp=line.split(',')
+        #         info=[]
+        #         query=''
+        #         if len(temp)==3:
+        #                 for t in temp:
+        #                         t=t.strip()
+        #                         info.append(t.split(' ')[0])
+        #                 #update commit table
+        #                 query='update commits set affected_files_count='+info[0]+',net_lines_added='+info[1]+',net_lines_removed='+info[2]+' where idcommits='+str(cid)
+        #         elif len(temp)==2:
+        #                 if 'insert' in line:
+        #                         for t in temp:
+        #                                 t=t.strip()
+        #                                 info.append(t.split(' ')[0])
+        #                         #update commit table
+        #                         query='update commits set affected_files_count='+info[0]+',net_lines_added='+info[1]+',net_lines_removed=0 where idcommits='+str(cid)
+        #                 elif 'delet' in line:
+        #                         for t in temp:
+        #                                 t=t.strip()
+        #                                 info.append(t.split(' ')[0])
+        #                         #update commit table
+        #                         query='update commits set affected_files_count='+info[0]+',net_lines_added=0,net_lines_removed='+info[1]+' where idcommits='+str(cid)
+        #         execute(query)  
 
 
 
@@ -820,19 +903,89 @@ def lifespan_vs_complexity():
                 where ac.actionability = 1
                 and a.stream="''' + project + '"'
 
+def remove_blank_lines_and_comments(diff):
+        diff=re.sub('/\\*(.|\n)*\\*/','',diff) # remmoving multiline comments
+        lines=diff.split('\n')
+        copy=[]
+        for line in lines:
+                line=re.sub('//(.*)','',line) #removing single line comments
+                line=line.strip() #stripping trailing whitespaces
+                if not (line=='' or line=='\n'):
+                        #however changes will start with + or -
+                        if line.startswith('+') or line.startswith('-'):
+                                temp=line[1:] #take the actual line
+                                temp=temp.strip() #stripping trailing whitespaces
+                                if not (temp=='' or temp=='\n'):
+                                        copy.append(line)
+                        else:
+                                copy.append(line)
+        return '\n'.join(copy)
+def process_commit(sha,filepath):
+        affected_files=0
+        net_loc_change=0
+        infile_loc_change=0
+        net_logical_change=0
+        infile_logical_change=0
+        full=subprocess.check_output(
+                shlex.split("git show "+sha),
+                encoding="437"
+        )
+        t=open('temp.txt','w')
+        t.write(full)
+        t.close()
 
+        diffs=full.split('diff --git ')
+        del diffs[0]
+        affected_files=len(diffs)
+
+        for diff in diffs:
+                loc=0
+                logical=0
+                diff=re.sub('[@]{3,}','',diff)
+                parts=diff.split('@@')
+                del parts[0]
+                ind = 1
+                while ind < len(parts):
+                        cur_diff=parts[ind]
+                        cur_diff=remove_blank_lines_and_comments(cur_diff)
+                        lines=cur_diff.split('\n')
+                        flag=False #flag to keep track of logical changes
+                        for line in lines:
+                                if line.startswith('+') or line.startswith('-'):
+                                        loc+=1
+                                        if not flag:
+                                                logical+=1
+                                                flag=True
+                                else:
+                                        flag=False
+                        ind+=2
+                if filepath in diff:
+                       infile_loc_change=loc
+                       infile_logical_change=logical
+                net_loc_change+=loc
+                net_logical_change+=logical
+        
+        return [affected_files,net_loc_change,infile_loc_change,net_logical_change,infile_logical_change]
+
+                        
+
+
+        pass
 if __name__ == "__main__":
+        #process_commit("64a98fc3b7a60080367935533af0471125b8abf5",'netwerk/cookie/nsCookieService.cpp')
         # processing functions
-        main_file_actionability()
-        invalidate_file_renamed_alerts()
+        alerts_from_other_files()
+        # main_file_actionability()
+        # invalidate_file_renamed_alerts()
+        
         
         # reporting functions
         methodology_infos()
         get_alert_infos()
         actionability_and_lifespan_report()
         
-        update_fix_commit_infos()
+        #update_fix_commit_infos()
         patch_complexity()
         manual_validation_file()
 
-        alerts_from_other_files()
+        f.close()

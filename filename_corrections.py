@@ -1,3 +1,6 @@
+'''this file contains code
+on how I corrected filename prefixes 
+for each projects'''
 import pymysql 
 import sys
 
@@ -22,6 +25,53 @@ query="select * from files where project='"+project+"';"
 
 results=execute(query)
 
+temp=[]
+a=[]
+for item in results:
+    full=item['filepath_on_coverity']
+    t=full.split("/")
+    if t[1] not in temp:
+        temp.append(t[1])
+    if t[1]=='base':
+        print(full)
+
+print(temp)
+
+#CORRECTION FOR SAMBA
+# i=0
+# for item in results:
+#     temp=item['filepath_on_coverity']
+#     cut='/samba'
+#     if temp.startswith(cut):
+#         temp=temp[6:]
+#         fid=str(item['idfiles'])
+#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+#         execute(query)
+#         i+=1
+# print(i)
+# i=0
+# for item in results:
+#     temp=item['filepath_on_coverity']
+#     cut='/bin/default'
+#     if temp.startswith(cut):
+#         temp=temp[12:]
+#         fid=str(item['idfiles'])
+#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+#         execute(query)
+#         i+=1
+# print(i)
+# i=0
+# for item in results:
+#     temp=item['filepath_on_coverity']
+#     cut='/base/src'
+#     if temp.startswith(cut):
+#         temp=temp[9:]
+#         fid=str(item['idfiles'])
+#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+#         execute(query)
+#         i+=1
+# print(i)
+
 #CORRECTION FOR KODI
 # i=0
 # for item in results:
@@ -35,17 +85,6 @@ results=execute(query)
 #         i+=1
 # print(i)
 
-temp=[]
-a=[]
-for item in results:
-    full=item['filepath_on_coverity']
-    t=full.split("/")
-    if t[1] not in temp:
-        temp.append(t[1])
-    if t[1]=='home':
-        print(full)
-
-print(temp)
 
 #CORRECTIONS FOR LINUX
 # i=0

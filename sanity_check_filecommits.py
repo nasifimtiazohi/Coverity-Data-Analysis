@@ -1,3 +1,5 @@
+'''check if files got all their commits in filecommits,
+do with firefox and linux once again?'''
 import pymysql
 import sys
 import datetime

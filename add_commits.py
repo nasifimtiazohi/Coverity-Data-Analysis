@@ -9,14 +9,9 @@ import shlex
 import dateutil.parser as dp
 
 
-#read command line arguments
-project=sys.argv[1]
-path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
-start=sys.argv[3]
-end=sys.argv[4]
-os.chdir(path)
 
 
+project=None
 
 
 connection = pymysql.connect(host='localhost',
@@ -57,20 +52,14 @@ def project_exists(project):
     return False
 
 def get_all_files(project):
-#     (ProgrammingError(1064, u'You have an error in your SQL syntax; check the manual that corresponds to your
-#      MySQL server version for the right syntax to use near \'False","Firefox")\' at line 1'), 'insert into commits values 
-#          (null,"1066acafbbc4f05de897a5a35e702c49f5108a26","Jeff Walden","jwalden@mit.edu","2010-03-26 18:01:54","Jeff Walden",
-# "jwalden@mit.edu","2010-03-26 18:01:54","Backed out changeset e7065853ef79; I\'ll be repushing this incrementally,
-#  attempting to find the precise place where things go bad, in the near future.  Happy days are here again!  :-\\",null,null,null,"False","Firefox");')
-# (InternalError(1366, u"Incorrect integer value: 'None' for column 'commit_id' at row 1"), 'insert into filecommits values 
-# (null,5184,"None","ModificationType.MODIFY",5,5);')
+
 
 # and 
 #                 f.idfiles not in (
 #                     select distinct file_id from filecommits
 #                 )
 
-#Linux starting from 31052
+
     with connection.cursor() as cursor:
         query='''select distinct f.idfiles, f.filepath_on_coverity
                 from alerts a
@@ -78,27 +67,14 @@ def get_all_files(project):
                 on a.file_id=f.idfiles
                 where a.stream="''' + str(project) + \
                 '''" and a.is_invalid=0 and a.status='Fixed'
-                and f.idfiles not in (
-                   select distinct file_id from filecommits
-                 )
                 and f.idfiles > ''' + str(start)+ \
                 " and f.idfiles <= "+str(end)
         if project=='Firefox':
-            query+= ''' and not (f.filepath_on_coverity  like '/obj-x86_64-pc-linux-gnu%'
-                    or f.filepath_on_coverity  like '/usr%'
-                    or f.filepath_on_coverity like '/rdf%'
-                    or f.filepath_on_coverity  like '/embedding%'
-                    or f.filepath_on_coverity  like '/obj-x86_64-unknown-linux-gnu%'
-                    or f.filepath_on_coverity  like '/obj-coverity%'
-                    or f.filepath_on_coverity  like '/content%'
-                    or f.filepath_on_coverity  like '/webapprt%'
-                    or f.filepath_on_coverity  like '/jpeg%'
-                    or f.filepath_on_coverity  like '/home/scan%'
-                    or f.filepath_on_coverity  like '/dbm%'
-                    or f.filepath_on_coverity  like '/xpinstall%'
-                    or f.filepath_on_coverity  like '/obj%'
-                    or f.filepath_on_coverity  like '/directory%'
-                    or f.filepath_on_coverity  like '/mailnews%')'''
+            query+= ''' and not (f.filepath_on_coverity  like '/obj-x86_64-unknown-linux-gnu%'
+                        or f.filepath_on_coverity  like '/obj-coverity%'
+                        or f.filepath_on_coverity  like '/obj-x86_64-pc-linux-gnu%'
+                        or f.filepath_on_coverity  like '/usr%')'''
+                    #embedding, rdf, 
         #query="select * from files where project='"+str(project)+"' and idfiles >" + str(last_checked)+";"
         cursor.execute(query)
         results=cursor.fetchall()
@@ -416,8 +392,14 @@ def diffId_ifExists(filecommit_id):
 
 
                   
-
+''' add commit data for each affected file within start and end date'''
 if __name__=="__main__":
+    #read command line arguments
+    project=sys.argv[1]
+    path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
+    start=sys.argv[3]
+    end=sys.argv[4]
+    os.chdir(path)
     
     #check if project exists
     if not project_exists(project):
@@ -427,7 +409,7 @@ if __name__=="__main__":
     # get all the files from database
     files=get_all_files(project)
 
-    print(len(files))
+    print(len(files),files[0],files[-1])
     for f in files:
         #get fid and see if it is already covered
 
