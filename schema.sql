@@ -83,6 +83,7 @@ CREATE TABLE `coverityscan`.`commits` (
   `net_lines_removed` INT NULL, 
   `is_merged` VARCHAR(255),
   `project` VARCHAR(255) NOT NULL,
+  `merge_date` DATETIME NOT NULL,
   PRIMARY KEY (`idcommits`));
 
 CREATE TABLE `coverityscan`.`commit_parents` (

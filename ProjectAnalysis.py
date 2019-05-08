@@ -282,6 +282,9 @@ def main_file_actionability():
                         last_detected_date=temp['code_version_date']
                 else:
                         last_detected_date=temp["date"]
+                ####check line
+                last_detected_date-= datetime.timedelta(days=30)
+                ####check line edn
                 last_detected_date=last_detected_date.strftime("%Y-%m-%d") +" 00:00:00" #to maintain start of the day
                 query="select * from snapshots where last_snapshot="+last_snapshot+" and stream='" +project +"';"
                 temp=execute(query)[0]
@@ -570,7 +573,7 @@ def manual_validation_file():
 
         wb=Workbook()
         ws1=wb.create_sheet("Fix commits",0)
-        query='''select a.idalerts,a.cid, b.type, f.filepath_on_coverity, ac.*
+        query='''select a.idalerts,a.cid, b.*,f.filepath_on_coverity, ac.*, datediff(s.date,a.first_detected) as diff
                 from actionability ac
                 join alerts a
                 on a.idalerts=ac.alert_id 
@@ -578,6 +581,8 @@ def manual_validation_file():
                 on f.idfiles=a.file_id
                 join bug_types b
                 on b.idbug_types=a.bug_type
+                join snapshots s
+                on a.last_snapshot_id=s.idsnapshots
                 where ac.actionability=1
                 and (ac.single_fix_commit is not null or ac.fix_commits is not null)
                 and a.stream="'''+project+'''"
@@ -602,17 +607,21 @@ def manual_validation_file():
                         ws1['A'+str(row)]=item['idalerts']
                         ws1['B'+str(row)]=item['cid']
                         ws1['C'+str(row)]=item['type']
-                        ws1['D'+str(row)]=item['filepath_on_coverity']
-                        ws1['E'+str(row)]=c['sha']
-                        # if len(commits)>1:
-                        #         ws1['F'+str(row)]="\\b"+c['message'].encode('ascii','ignore')+"\\b0"
-                        # else:
-                        ws1['F'+str(row)]=c['message'].encode('utf-8','ignore').decode()
+                        ws1['D'+str(row)]=item['impact']
+                        ws1['E'+str(row)]=item['filepath_on_coverity']
+                        #look at lifespan
+                        ws1['F'+str(row)]=item['diff']
+                        #complexity I can check on the commit diffs itself
+                        ws1['G'+str(row)]=c['sha']
+                        if len(commits)>1:
+                                ws1['H'+str(row)]="\\b"+c['message'].encode('ascii','ignore')+"\\b0"
+                        else:
+                                ws1['H'+str(row)]=c['message'].encode('ascii','ignore').decode()
                         row+=1
 
         ws2=wb.create_sheet("Unactionable Alerts",1)
 
-        query='''select a.idalerts,a.cid, b.type, f.filepath_on_coverity, ac.*
+        query='''select a.idalerts,a.cid, b.*, f.filepath_on_coverity, s.date as lastdate, ac.*
                 from actionability ac
                 join alerts a
                 on a.idalerts=ac.alert_id 
@@ -620,6 +629,8 @@ def manual_validation_file():
                 on f.idfiles=a.file_id
                 join bug_types b
                 on b.idbug_types=a.bug_type
+                join snapshots s
+                on a.last_snapshot_id=s.idsnapshots
                 where ac.actionability=0
                 and (ac.file_deleted is null and ac.file_renamed is null)
                 and a.stream="'''+project+'''"
@@ -632,11 +643,17 @@ def manual_validation_file():
                 ws2['A'+str(row)]=item['idalerts']
                 ws2['B'+str(row)]=item['cid']
                 ws2['C'+str(row)]=item['type']
-                ws2['D'+str(row)]=item['filepath_on_coverity']
+                ws2['D'+str(row)]=item['impact']
+                ws2['E'+str(row)]= item['lastdate']
+                ws2['F'+str(row)]=item['filepath_on_coverity']
+                ws2['G'+str(row)]=item['file_deleted']
+                ws2['H'+str(row)]=item['file_renamed']
+                ws2['I'+str(row)]=item['suppression']
+                ws2['J'+str(row)]='*'
                 row+=1
         
         ws3=wb.create_sheet("Single Fix Commits",2)
-        query='''select a.idalerts,a.cid, b.type, f.filepath_on_coverity, ac.*
+        query='''select a.idalerts,a.cid, b.*, f.filepath_on_coverity, ac.*, datediff(s.date,a.first_detected) as diff
                 from actionability ac
                 join alerts a
                 on a.idalerts=ac.alert_id 
@@ -644,6 +661,8 @@ def manual_validation_file():
                 on f.idfiles=a.file_id
                 join bug_types b
                 on b.idbug_types=a.bug_type
+                join snapshots s
+                on a.last_snapshot_id=s.idsnapshots
                 where ac.actionability=1
                 and ac.single_fix_commit is not null
                 and a.stream="'''+project+'''"
@@ -662,9 +681,13 @@ def manual_validation_file():
                         ws3['A'+str(row)]=item['idalerts']
                         ws3['B'+str(row)]=item['cid']
                         ws3['C'+str(row)]=item['type']
-                        ws3['D'+str(row)]=item['filepath_on_coverity']
-                        ws3['E'+str(row)]=c['sha']
-                        ws3['F'+str(row)]=c['message'].encode('utf-8','ignore').decode()
+                        ws3['D'+str(row)]=item['impact']
+                        ws3['E'+str(row)]=item['filepath_on_coverity']
+                        #look at lifespan
+                        ws3['F'+str(row)]=item['diff']
+                        #complexity I can check on the commit diffs itself
+                        ws3['G'+str(row)]=c['sha']
+                        ws3['H'+str(row)]=c['message'].encode('ascii',errors='ignore').decode()
                         row+=1
 
         wb.save('Project_'+project+'.xlsx')
@@ -974,18 +997,18 @@ def process_commit(sha,filepath):
 if __name__ == "__main__":
         #process_commit("64a98fc3b7a60080367935533af0471125b8abf5",'netwerk/cookie/nsCookieService.cpp')
         # processing functions
-        alerts_from_other_files()
-        # main_file_actionability()
-        # invalidate_file_renamed_alerts()
+        # alerts_from_other_files()
+        main_file_actionability()
+        # # invalidate_file_renamed_alerts()
         
         
-        # reporting functions
-        methodology_infos()
-        get_alert_infos()
+        # # reporting functions
+        # methodology_infos()
+        # get_alert_infos()
         actionability_and_lifespan_report()
         
-        #update_fix_commit_infos()
-        patch_complexity()
+        # #update_fix_commit_infos()
+        # patch_complexity()
         manual_validation_file()
 
         f.close()

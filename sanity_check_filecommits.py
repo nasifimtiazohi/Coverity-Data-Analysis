@@ -62,17 +62,31 @@ def get_all_files(project):
                     or f.filepath_on_coverity  like '/directory%'
                     or f.filepath_on_coverity  like '/mailnews%')'''
         #query="select * from files where project='"+str(project)+"' and idfiles >" + str(last_checked)+";"
+        print(query)
         cursor.execute(query)
         results=cursor.fetchall()
         return results
-
+def get_start_end_date():
+    d={}
+    with connection.cursor() as cursor:
+        query="select start_date, end_date from projects where name='" + project + "';"
+        cursor.execute(query)
+        result=cursor.fetchone()
+        start=result['start_date']
+        end=result['end_date']
+        start=start.strftime('%Y-%m-%d')
+        d['start_date']=start
+        end=end.strftime('%Y-%m-%d')
+        d['end_date']=end
+        return d
 def get_commit_count_from_git(filepath):
-    temp=ac.get_start_end_date()
+    temp=get_start_end_date()
     start_date=temp['start_date']
     end_date= temp['end_date']
     lines=subprocess.check_output(
         shlex.split("git log --follow --oneline --after='"+ start_date +"' --before='"+ end_date+"' -- "+filepath),
-        stderr=subprocess.STDOUT
+        stderr=subprocess.STDOUT,
+        encoding='437'
     ).split('\n')
     return len(lines) - 1 
 
@@ -89,6 +103,7 @@ if __name__ == "__main__":
         exit()
     # get all the files from database
     files=get_all_files(project)
+    #files.reverse()
     print(len(files))
     for f in files:
         #get fid and see if it is already covered
