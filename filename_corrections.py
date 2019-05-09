@@ -101,26 +101,26 @@ print(temp)
 
 
 #CORRECTIONS FOR FIREFOX
-# i=0
-# for item in results:
-#     temp=str(item['filepath_on_coverity'])
-#     cut='/mozilla'
-#     if temp.startswith(cut):
-#         temp=temp[8:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)
+i=0
+for item in results:
+    temp=str(item['filepath_on_coverity'])
+    cut='/mozilla'
+    if temp.startswith(cut):
+        temp=temp[8:]
+        fid=str(item['idfiles'])
+        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+        execute(query)
+        i+=1
+print(i)
 
-# i=0
-# for item in results:
-#     temp=str(item['filepath_on_coverity'])
-#     cut='/base/src/mozilla'
-#     if temp.startswith(cut):
-#         temp=temp[17:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)   
+i=0
+for item in results:
+    temp=str(item['filepath_on_coverity'])
+    cut='/base/src/mozilla'
+    if temp.startswith(cut):
+        temp=temp[17:]
+        fid=str(item['idfiles'])
+        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+        execute(query)
+        i+=1
+print(i)   

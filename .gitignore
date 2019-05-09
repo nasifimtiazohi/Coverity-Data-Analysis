@@ -18,6 +18,10 @@
 .vscode
 *.txt
 *.xlsx
+*.csv
+*.jpg
+*.jpeg
+*.png
 
 ## Intermediate documents:
 *.dvi
