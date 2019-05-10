@@ -150,20 +150,13 @@ CREATE TABLE `coverityscan`.`occurrences` (
 `is_defect_line` TINYINT,
 PRIMARY KEY (`alert_id`, `event_id`));
 
-CREATE TABLE `coverityscan`.`alert_commit_tracking` (
-  `alert_id` INT NOT NULL,
-  `file_activity_around_intro` VARCHAR(45) NULL,
-  `file_activity_around_fix` VARCHAR(45) NULL,
-  `intro_commit_id` INT NULL,
-  `fix_commit_id` INT NULL,
-  `fix_commits` LONGTEXT NULL AFTER `fix_commit_id`,
-  `suppression` LONGTEXT NULL AFTER `fix_commits`;
-  PRIMARY KEY (`alert_id`));
 
 CREATE TABLE `coverityscan`.`fix_complexity` (
   `commit_id` INT NOT NULL,
   `alert_id` INT NOT NULL,
   `file_count` FLOAT NULL,
+  `net_affected_function` FLOAT NULL,
+  `infile_affected_function` FLOAT NULL,
   `net_loc_change` FLOAT NULL,
   `infile_loc_change` FLOAT NULL,
   `net_logical_change` FLOAT NULL,
@@ -189,6 +182,9 @@ CREATE TABLE `coverityscan`.`actionability` (
   `suppress_keyword` VARCHAR(45) NULL,
   PRIMARY KEY (`alert_id`));
 
-
+CREATE TABLE `coverityscan`.`merge_date` (
+  `commit_id` INT NOT NULL,
+  `merge_date` DATETIME NULL,
+  PRIMARY KEY (`commit_id`));
 
 

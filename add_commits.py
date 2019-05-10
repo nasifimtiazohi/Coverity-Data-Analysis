@@ -11,9 +11,6 @@ import dateutil.parser as dp
 
 
 
-project=None
-
-
 connection = pymysql.connect(host='localhost',
                              user='root',
                              db='coverityscan',
@@ -52,14 +49,10 @@ def project_exists(project):
     return False
 
 def get_all_files(project):
-
-
 # and 
 #                 f.idfiles not in (
 #                     select distinct file_id from filecommits
 #                 )
-
-
     with connection.cursor() as cursor:
         query='''select distinct f.idfiles, f.filepath_on_coverity
                 from alerts a

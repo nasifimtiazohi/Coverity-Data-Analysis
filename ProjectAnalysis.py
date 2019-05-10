@@ -1,3 +1,4 @@
+# import statement
 import pymysql
 import sys
 import numpy as np
@@ -7,14 +8,18 @@ import subprocess
 import shlex
 import os
 from openpyxl import Workbook
-mainpath=os.getcwd()
-#read the project name
-project=str(sys.argv[1])
-path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
-start_ind=str(sys.argv[3])
+import dateutil.parser as dp
 
+# save the main path from where this script is running
+mainpath = os.getcwd()
 
-#open sql connection 
+# read the project name
+project = str(sys.argv[1])
+path = "/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
+start=sys.argv[3]
+end=sys.argv[4]
+
+# open sql connection
 connection = pymysql.connect(host='localhost',
                              user='root',
                              db='coverityscan',
@@ -23,121 +28,129 @@ connection = pymysql.connect(host='localhost',
                              autocommit=True)
 
 
-
-f= open(project+ "_new_analysis.txt","w")
+f = open(project + "_brand_new_analysis.txt", "w")
 os.chdir(path)
+
 
 def execute(query):
     with connection.cursor() as cursor:
         cursor.execute(query)
-        results=cursor.fetchall()
+        results = cursor.fetchall()
     return results
-    
+
+
 def get_general_report():
         # total number on snapshots, start date, and end_date, median interval between snapshots
-        query='''select count(*) as c
+        query = '''select count(*) as c
                 from snapshots
-                where 
+                where
                 stream="''' + project + '''";'''
-        snapshot_count=execute(query)[0]["c"]
+        snapshot_count = execute(query)[0]["c"]
         f.write("total snapshots = " + str(snapshot_count) + '\n')
 
-        query='''select start_date, end_date from projects 
+        query = '''select start_date, end_date from projects
                 where name="''' + project + '''";'''
-        start_date=execute(query)[0]["start_date"]
-        end_date=execute(query)[0]["end_date"]
-        f.write("start date and end dates are: "+str(start_date)+", "+str(end_date)+ '\n')
+        start_date = execute(query)[0]["start_date"]
+        end_date = execute(query)[0]["end_date"]
+        f.write("start date and end dates are: " +
+                str(start_date)+", "+str(end_date) + '\n')
 
-        query='''select datediff(s1.date,s2.date) as diff
+        query = '''select datediff(s1.date,s2.date) as diff
                 from snapshots s1
                 join snapshots s2
                 on s1.last_snapshot=s2.idsnapshots
                 where s1.last_snapshot is not null and
-                s2.stream="'''+project+ \
+                s2.stream="'''+project + \
                 '''" and s1.stream="''' + project + '''";'''
-        datediffs=execute(query)
-        temp=[]
+        datediffs = execute(query)
+        temp = []
         for d in datediffs:
                 temp.append(d["diff"])
-        median_interval=np.median(temp)
-        avg_interval= np.mean(temp)
-        f.write("median and average interval between snapshots are: "+str(median_interval)+", "+str(avg_interval)+ '\n')
+        median_interval = np.median(temp)
+        avg_interval = np.mean(temp)
+        f.write("median and average interval between snapshots are: " +
+                str(median_interval)+", "+str(avg_interval) + '\n')
 
 # # get alert infos
+
+
 def get_alert_infos():
-        query='''select * from alerts where is_invalid=0 and stream="''' + project + '''";'''
-        all_alerts=execute(query)
-        total_alerts=len(all_alerts)
-        f.write("count of total alert: "+str(total_alerts)+ '\n')
-        
-        query='''select count(*) as c from alerts where status="Fixed" and is_invalid=0 and stream="''' + project + '''";'''
-        t=execute(query)[0]['c']
-        f.write("eliminated bug: "+str(t)+" ")
-        t=(float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t)+ '\n')
-        
+        query = '''select * from alerts where is_invalid=0 and stream="''' + project + '''";'''
+        all_alerts = execute(query)
+        total_alerts = len(all_alerts)
+        f.write("count of total alert: "+str(total_alerts) + '\n')
 
-        query='''select count(*) as c from alerts where is_invalid=0 and classification= "Bug" and stream="''' + project + '''";'''
-        t=execute(query)[0]['c']
+        query = '''select count(*) as c from alerts where status="Fixed" and is_invalid=0 and stream="''' + \
+                                project + '''";'''
+        t = execute(query)[0]['c']
+        f.write("eliminated alerts: "+str(t)+" ")
+        t = (float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t) + '\n')
+
+        query = '''select count(*) as c from alerts where is_invalid=0 and classification= "Bug" and stream="''' + \
+                                project + '''";'''
+        t = execute(query)[0]['c']
         f.write("marked bugs: "+str(t)+" ")
-        t=(float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t)+ '\n')
+        t = (float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t) + '\n')
 
-        query='''select count(*) as c from alerts where is_invalid=0 and classification= "False Positive" and stream="''' + project + '''";'''
-        t=execute(query)[0]['c']
+        query = '''select count(*) as c from alerts where is_invalid=0 and classification= "False Positive" and stream="''' + project + '''";'''
+        t = execute(query)[0]['c']
         f.write("false positive: "+str(t)+" ")
-        t=(float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t)+ '\n')
+        t = (float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t) + '\n')
 
-        query='''select count(*) as c from alerts where is_invalid=0 and classification= "Intentional" and stream="''' + project + '''";'''
-        t=execute(query)[0]['c']
+        query = '''select count(*) as c from alerts where is_invalid=0 and classification= "Intentional" and stream="''' + project + '''";'''
+        t = execute(query)[0]['c']
         f.write("intentional: "+str(t)+" ")
-        t=(float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t)+ '\n')
+        t = (float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t) + '\n')
 
-        query='''select count(*) as c from alerts where status="New" and is_invalid=0 and stream="''' + project + '''";'''
-        t=execute(query)[0]['c']
+        query = '''select count(*) as c from alerts where status="New" and is_invalid=0 and stream="''' + \
+                                project + '''";'''
+        t = execute(query)[0]['c']
         f.write("alive: "+str(t)+" ")
-        t=(float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t)+ '\n')
+        t = (float(t)/float(total_alerts))*100
+        f.write("proportion: "+str(t) + '\n')
 
 
 def alerts_from_other_files():
         f.write('\n\n')
-        #get alerts from files which never existed in the git history
-        ##change those alerts invalidity to 3
-        query='''update alerts
+        # get alerts from files which never existed in the git history
+        # change those alerts invalidity to 3
+        query = '''update alerts
                 set is_invalid=3
                 where idalerts in
                 (select idalerts from
                 (select distinct a.idalerts
                 from files f
-                join alerts a 
-                on f.idfiles=a.file_id 
-                where f.idfiles not in  
+                join alerts a
+                on f.idfiles=a.file_id
+                where f.idfiles not in
                 (select distinct f.idfiles
                 from files f
                 join filecommits fc
                 on f.idfiles=fc.file_id
-                where f.project="''' +project+'''")
-                and f.project = "''' +project+ '''" and a.is_invalid=0)as sub);'''
+                where f.project="''' + project+'''")
+                and f.project = "''' + project + '''" and a.is_invalid=0)as sub);'''
         with connection.cursor() as cursor:
                 cursor.execute(query)
-                print("alerts from other files count affected: ",cursor.rowcount)
+                print("alerts from other files count affected: ", cursor.rowcount)
 
-
-        query="select * from alerts where is_invalid=3 and stream='"+project+"';"
-        results=execute(query)
+        query = "select * from alerts where is_invalid=3 and stream='"+project+"';"
+        results = execute(query)
         f.write("number of other files alerts are: "+str(len(results))+'\n')
-        
-        #generate general reports
-        query="select distinct status, count(*) as c from alerts where is_invalid=3 and stream='"+project+"' group by status;"
-        temp=execute(query)
+
+        # generate general reports
+        query = "select distinct status, count(*) as c from alerts where is_invalid=3 and stream='" + \
+                                               project+"' group by status;"
+        temp = execute(query)
         f.write(str(temp)+'\n')
 
-        #generate general reports
-        query="select distinct classification, count(*) as c from alerts where is_invalid=3 and stream='"+project+"' group by classification;"
-        temp=execute(query)
+        # generate general reports
+        query = "select distinct classification, count(*) as c from alerts where is_invalid=3 and stream='" + \
+                                                       project+"' group by classification;"
+        temp = execute(query)
         f.write(str(temp)+'\n\n\n')
 
         # #write the name of the other files
@@ -145,9 +158,10 @@ def alerts_from_other_files():
         # temp=execute(query)
         # for t in temp:
         #         f.write(str(t)+'\n')
-        
-def search_suppression_keywords_in_commit_diffs(sha,filepath):
-        keywords=[
+
+
+def search_suppression_keywords_in_commit_diffs(sha, filepath):
+        keywords = [
                 r'coverity\[.*\]',
                 r'/\* fall through \*/',
                 '@OverridersMustCall', '@OverridersNeedNotCall',
@@ -159,18 +173,19 @@ def search_suppression_keywords_in_commit_diffs(sha,filepath):
                 '@SensitiveData',
         ]
         lines = subprocess.check_output(
-                shlex.split('git show '+sha+' -- '+filepath), 
-                stderr=subprocess.STDOUT,encoding="437").split("\n")
-        
+                shlex.split('git show '+sha+' -- '+filepath),
+                stderr=subprocess.STDOUT, encoding="437").split("\n")
+
         for nextLine in lines:
-                if bool(re.match('\+', nextLine,re.I)):
+                if bool(re.match('\+', nextLine, re.I)):
                         for keyword in keywords:
-                                if bool(re.search(keyword,nextLine,re.I)):
-                                        #found suppression word
-                                        if keyword==r'coverity\[.*\]':
-                                                temp=re.search(r'coverity\[(.*)\]',nextLine,re.I).group(1)
+                                if bool(re.search(keyword, nextLine, re.I)):
+                                        # found suppression word
+                                        if keyword == r'coverity\[.*\]':
+                                                temp = re.search(
+                                                    r'coverity\[(.*)\]', nextLine, re.I).group(1)
                                                 return 'coverity['+temp+']'
-                                        elif keyword==r'/\* fall through \*/':
+                                        elif keyword == r'/\* fall through \*/':
                                                 return '/* fall through */'
                                         else:
                                                 return keyword
@@ -179,81 +194,125 @@ def search_suppression_keywords_in_commit_diffs(sha,filepath):
         return None
 
 
-def detect_file_rename_delete_in_a_commit(sha,filepath,change_type):
-        filepath=filepath[1:]
-        if type(change_type)==str and (bool(re.search('MODIFY',change_type,re.I)) or bool(re.search('ADD',change_type,re.I))):
+def detect_file_rename_delete_in_a_commit(sha, filepath, change_type):
+        filepath = filepath[1:]
+        if type(change_type) == str and (bool(re.search('MODIFY', change_type, re.I)) or bool(re.search('ADD', change_type, re.I))):
                 return None
-        if type(change_type)==str and bool(re.search('RENAME',change_type,re.I)):
+        if type(change_type) == str and bool(re.search('RENAME', change_type, re.I)):
                 return 'renamed'
         else:
-                lines=subprocess.check_output(
-                        shlex.split("git show --summary "+sha), 
-                stderr=subprocess.STDOUT,encoding="437").split('\n')
+                lines = subprocess.check_output(
+                        shlex.split("git show --summary "+sha),
+                stderr=subprocess.STDOUT, encoding="437").split('\n')
                 for nextLine in lines:
-                        #look for only short filename in lines
-                        nextLine=nextLine.encode('ascii','ignore').decode()
+                        # look for only short filename in lines
+                        nextLine = nextLine.encode('ascii', 'ignore').decode()
                         if filepath.split("/")[-1] in nextLine:
                                 if 'rename' in nextLine:
                                         return 'renamed'
                                 elif 'delete' in nextLine:
                                         return 'deleted'
-                return None 
+                return None
 
-def new_file_id_after_renaming(sha,filepath):
-        filepath=filepath[1:]
-        lines=subprocess.check_output(
-                shlex.split("git show --summary "+sha), 
-                stderr=subprocess.STDOUT,encoding="437").split('\n')
-        rename_line=''
 
-        filename=filepath.split("/")[-1]
+def new_file_id_after_renaming(sha, filepath):
+        filepath = filepath[1:]
+        lines = subprocess.check_output(
+                shlex.split("git show --summary "+sha),
+                stderr=subprocess.STDOUT, encoding="437").split('\n')
+        rename_line = ''
+
+        filename = filepath.split("/")[-1]
         for nextLine in lines:
                 # renaming info in commit message can ruin string matching logic
                 # however apartfrom rename, filename, and =>; git info also contain proportion with a %
-                # so checking all those 4 conditions in trying to be more accurate 
+                # so checking all those 4 conditions in trying to be more accurate
                 if filename in nextLine and 'rename' in nextLine and '=>' in nextLine and '%' in nextLine:
-                        rename_line=nextLine
+                        rename_line = nextLine
         try:
-                matchlist=re.findall('{[^{}]*}',rename_line)
-                #being more restrictive (prolly not necessary) in having {} in this logic
-                if len(matchlist)==1 and '{' in rename_line and '}' in rename_line:
-                        temp=re.search("{(.*)}",rename_line).group(1)
-                        temp=temp.split("=>")
-                        old_file=temp[0].strip()
-                        new_file=temp[1].strip()
-                        rename_line=rename_line.strip()
-                        start=rename_line.find('{')
-                        end=rename_line.find('}')
-                        new_filepath=rename_line[:start]+new_file+rename_line[end+1:] 
-                        new_filepath=new_filepath.replace('//','/')
-                        new_filepath=new_filepath.split(' ')[1].strip()
-                        query="select idfiles from files where filepath_on_coverity='/"+new_filepath+"' and project='"+project+"';"
+                matchlist = re.findall('{[^{}]*}', rename_line)
+                # being more restrictive (prolly not necessary) in having {} in this logic
+                if len(matchlist) == 1 and '{' in rename_line and '}' in rename_line:
+                        temp = re.search("{(.*)}", rename_line).group(1)
+                        temp = temp.split("=>")
+                        old_file = temp[0].strip()
+                        new_file = temp[1].strip()
+                        rename_line = rename_line.strip()
+                        start = rename_line.find('{')
+                        end = rename_line.find('}')
+                        new_filepath = rename_line[:start] + \
+                            new_file+rename_line[end+1:]
+                        new_filepath = new_filepath.replace('//', '/')
+                        new_filepath = new_filepath.split(' ')[1].strip()
+                        query = "select idfiles from files where filepath_on_coverity='/" + \
+                            new_filepath+"' and project='"+project+"';"
                         return execute(query)[0]['idfiles']
-                #when the full name or filepath has been changed 
-                elif len(matchlist)==0:
-                        rename_line=rename_line.strip()
-                        temp=rename_line.split('=>')
-                        old_file=temp[0].strip()
-                        old_file=old_file.split(' ')[1].strip()
-                        new_file=temp[1].strip()
-                        new_filepath=new_file.split(' ')[0].strip()     
-                        query="select idfiles from files where filepath_on_coverity='/"+new_filepath+"' and project='"+project+"';"
+                # when the full name or filepath has been changed
+                elif len(matchlist) == 0:
+                        rename_line = rename_line.strip()
+                        temp = rename_line.split('=>')
+                        old_file = temp[0].strip()
+                        old_file = old_file.split(' ')[1].strip()
+                        new_file = temp[1].strip()
+                        new_filepath = new_file.split(' ')[0].strip()
+                        query = "select idfiles from files where filepath_on_coverity='/" + \
+                            new_filepath+"' and project='"+project+"';"
                         return execute(query)[0]['idfiles']
                 else:
                         return None
         except Exception as e:
-                print("exception in rename discovery",e,rename_line)
+                print("exception in rename discovery", e, rename_line)
                 return None
 
+
+def get_merged_date(id, sha):
+        query='select * from merge_date where commit_id='+str(id)
+        results=execute(query)
+        if len(results)>0:
+                return results[0]['merge_date'].strftime("%Y-%m-%d %H:%M:%S")
+
+        query='select * from commits where idcommits='+str(id)
+        commit=execute(query)[0]
+
+        lines = subprocess.check_output(
+            shlex.split("git when-merged -l "+sha),
+            stderr=subprocess.STDOUT, encoding="437").split('\n')
+        dateline=None
+        direct_commit=False
+        for nextLine in lines:
+                if bool(re.search('Commit is directly on this branch',nextLine,re.I)):
+                        direct_commit=True
+                if bool(re.match('Date:', nextLine,re.I)):
+                        dateline=nextLine
+                        break
+        if direct_commit or dateline==None:
+                if commit['author_date']>commit['commit_date']:
+                        #possible rebase
+                        date=commit['author_date'].strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                        date=commit['commit_date'].strftime("%Y-%m-%d %H:%M:%S")
+        else:
+                date= re.match('Date:(.*)',dateline,re.I).group(1)
+                date=date.strip()
+                date=dp.parse(date)
+                date=date.strftime("%Y-%m-%d %H:%M:%S")
+        query='insert into merge_date values('+str(id)+',"'+str(date)+'");'
+        try:
+                execute(query)
+        except Exception as e:
+                print('synchronized machines',e)
+        return date
 # first look for file_activity with the main affected file
 def main_file_actionability():
-        query=query="select * from alerts where is_invalid=0 and status='Fixed' and stream='"+project+"' and idalerts>= "+start_ind
-        #"' and idalerts="+str(alert_id)
+        query="select * from alerts where is_invalid=0 and status='Fixed' and stream='"+project+"' \
+                        and idalerts not in (select alert_id from actionability) \
+                        and idalerts > "+str(start) + " and idalerts <"+str(end)
+        print(query)
         all_alerts=execute(query)
+        print(len(all_alerts))
         for alert in all_alerts:
                 aid=alert["idalerts"]
-                
-                #initialize actionability columns with default values
+                # initialize actionability columns with default values
                 actionability=0
                 marked_bug=None
                 file_activity_around_fix=None
@@ -272,19 +331,16 @@ def main_file_actionability():
                 if bool(re.search('Bug',classification,re.I)):
                         marked_bug='yes'
 
+                first_detected_date=alert['first_detected'].strftime("%Y-%m-%d")
 
                 last_snapshot=str(alert["last_snapshot_id"])
-                print(aid,last_snapshot)
-                ## get last detected dates
+                # get last detected dates
                 query="select * from snapshots where idsnapshots="+last_snapshot+" and stream='" +project +"';"
                 temp=execute(query)[0]
                 if temp['code_version_date']!=None:
                         last_detected_date=temp['code_version_date']
                 else:
                         last_detected_date=temp["date"]
-                ####check line
-                last_detected_date-= datetime.timedelta(days=30)
-                ####check line edn
                 last_detected_date=last_detected_date.strftime("%Y-%m-%d") +" 00:00:00" #to maintain start of the day
                 query="select * from snapshots where last_snapshot="+last_snapshot+" and stream='" +project +"';"
                 temp=execute(query)[0]
@@ -294,22 +350,33 @@ def main_file_actionability():
                         first_not_detected_anymore_date=temp["date"]
                 first_not_detected_anymore_date=first_not_detected_anymore_date.strftime("%Y-%m-%d") +" 23:59:59" #to maintain end of the day
 
+                
                 fid=alert["file_id"]
-                #look at if there's a commit (both author and commit date) within above two dates
+                # look at if there's a commit (both author and commit date) within 
+                # first_detected and first_not_detected
                 query='''select * from filecommits fc join commits c on fc.commit_id=c.idcommits 
                         join files f on f.idfiles=fc.file_id
                         where
-                        fc.file_id= ''' + str(fid) + ''' and ((c.commit_date >="''' +last_detected_date+ \
+                        fc.file_id= ''' + str(fid) + ''' and ((c.commit_date >="''' +first_detected_date+ \
                         '''" and c.commit_date <="''' +first_not_detected_anymore_date +'''")
-                        or (c.author_date >="''' +last_detected_date+ \
+                        or (c.author_date >="''' +first_detected_date+ \
                         '''" and c.author_date <="''' +first_not_detected_anymore_date +'''"))
                         ;'''
+                #sanity check by mining git again?
                 results=execute(query)
-
+                merged_commits=[]
+                if len(results)>0:
+                        # for each commit also get the merged date
+                        for item in results:
+                                merge_date=get_merged_date(item['idcommits'],item['sha'])
+                                item['merge_date']=merge_date
+                                if merge_date>=last_detected_date and merge_date<=first_not_detected_anymore_date:
+                                        merged_commits.append(item)
+                results=merged_commits #need to refactor this
                 if len(results)>0:
                         file_activity_around_fix='yes'
 
-                        #check if the file is deleted or renamed (involved moved) in the last commit
+                        # check if the file is deleted or renamed (involved moved) in the last commit
                         last_commit=results[-1]
                         temp=detect_file_rename_delete_in_a_commit(last_commit['sha'],last_commit['filepath_on_coverity'],last_commit['change_type'])
                         if temp == 'deleted':
@@ -340,7 +407,7 @@ def main_file_actionability():
                                         c['msg']=item['message']
                                         commits.append(c)
                                 for c in commits:
-                                        #look for suppression keywords in commit diff
+                                        # look for suppression keywords in commit diff
                                         suppression_word=search_suppression_keywords_in_commit_diffs(c['sha'],c['filepath'])
                                         if suppression_word!=None:
                                                 suppression='yes'
@@ -348,11 +415,11 @@ def main_file_actionability():
                                                 suppress_keyword=suppression_word
                                                 break
                                 if suppress_commit==None:
-                                        #developer fix
+                                        # developer fix
                                         if len(commits)==1:
                                                 single_fix_commit=str(commits[0]['commit_id'])
                                         else:
-                                                #look for keyword coverity, CID
+                                                # look for keyword coverity, CID
                                                 temp=[]
                                                 for c in commits:
                                                         temp.append(str(c['commit_id']))
@@ -360,7 +427,7 @@ def main_file_actionability():
                                                                 single_fix_commit=str(c['commit_id'])
                                                 fix_commits=','.join(temp)
                         
-                #determine actionability
+                # determine actionability
                 if marked_bug=='yes' or single_fix_commit!=None or fix_commits!=None:
                         actionability=1
                 # print((str(aid),actionability,marked_bug,file_activity_around_fix,single_fix_commit,fix_commits,deleted, 
@@ -370,8 +437,9 @@ def main_file_actionability():
                                 cursor.execute('insert into actionability values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)', 
                                 (str(aid),actionability,marked_bug,file_activity_around_fix,single_fix_commit,fix_commits,deleted, 
                                 delete_commit,renamed,rename_commit,transfered_alert_id,suppression,suppress_commit,suppress_keyword))
+                                print(str(aid))
                 except Exception as e:
-                        print(e)
+                        print("hello",e)
 
 
 
@@ -379,7 +447,7 @@ def main_file_actionability():
 
 
 
-## get alerts with no event history and make a temporary table for them 
+# get alerts with no event history and make a temporary table for them 
 def fixed_alerts_with_history():
         with connection.cursor() as cursor:
                 query = '''create temporary table alerts_with_no_history
@@ -424,7 +492,7 @@ def all_file_fix_activity():
                 commits=[]
 
                 last_snapshot=str(alert["last_snapshot_id"])
-                ## get last detected dates
+                # get last detected dates
                 query="select date from snapshots where idsnapshots="+last_snapshot+" and stream='" +project +"';"
                 last_detected_date=execute(query)[0]["date"]
                 last_detected_date=last_detected_date.strftime("%Y-%m-%d") + " 00:00:00"
@@ -433,7 +501,7 @@ def all_file_fix_activity():
                 first_not_detected_anymore_date=first_not_detected_anymore_date.strftime("%Y-%m-%d") + " 00:00:00"
 
                 for fid in locations.keys():
-                        #look at if there's a commit within above two dates
+                        # look at if there's a commit within above two dates
                         print("file id is: ",fid)
                         query='''select * from filecommits f join commits c on f.commit_id=c.idcommits where
                                 f.file_id= ''' + str(fid) + ''' and c.commit_date >="''' +last_detected_date+ \
@@ -472,7 +540,7 @@ def developer_fix_report():
 def actionability_and_lifespan_report():
         query="select count(*) as c from alerts where is_invalid=0 and stream='"+project+"';"
         total_alerts=execute(query)[0]['c']
-        #need to subtract new alerts that are alive for less the median lifespan of actionable alerts
+        # need to subtract new alerts that are alive for less the median lifespan of actionable alerts
         
         query='''select count(*) as c from actionability ac
                 join alerts a 
@@ -536,7 +604,7 @@ def actionability_and_lifespan_report():
         bug_lifespan=np.median(temp)
         f.write("median lifspan of  marked bug are : "+str(bug_lifespan)+'\n')
 
-       #1 is for other-file alerts  
+       # 3 is for other-file alerts  
         query='''select datediff(s.date,a.first_detected) as diff 
                 from alerts a 
                 join snapshots s
@@ -592,7 +660,7 @@ def manual_validation_file():
 
         row=2
         for item in results:
-                #get commit hashes
+                # get commit hashes
                 commits=[]
                 if item['single_fix_commit']!=None:
                         query="select * from commits where idcommits="+str(item['single_fix_commit'])
@@ -609,14 +677,14 @@ def manual_validation_file():
                         ws1['C'+str(row)]=item['type']
                         ws1['D'+str(row)]=item['impact']
                         ws1['E'+str(row)]=item['filepath_on_coverity']
-                        #look at lifespan
+                        # look at lifespan
                         ws1['F'+str(row)]=item['diff']
-                        #complexity I can check on the commit diffs itself
+                        # complexity I can check on the commit diffs itself
                         ws1['G'+str(row)]=c['sha']
-                        if len(commits)>1:
-                                ws1['H'+str(row)]="\\b"+c['message'].encode('ascii','ignore')+"\\b0"
-                        else:
-                                ws1['H'+str(row)]=c['message'].encode('ascii','ignore').decode()
+                        # if len(commits)>1:
+                        #         ws1['H'+str(row)]="\\b"+c['message'].encode('ascii','ignore')+"\\b0"
+                        # else:
+                        ws1['H'+str(row)]=c['message'].encode('ascii','ignore').decode()
                         row+=1
 
         ws2=wb.create_sheet("Unactionable Alerts",1)
@@ -672,10 +740,12 @@ def manual_validation_file():
 
         row=2
         for item in results:
-                #get commit hashes
+                # get commit hashes
                 commits=[]
                 if item['single_fix_commit']!=None:
-                        query="select * from commits where idcommits="+str(item['single_fix_commit'])
+                        query="select * from commits c\
+                                join merge_date m on c.idcommits=m.merge_date \
+                                where idcommits="+str(item['single_fix_commit'])
                         commits.append(execute(query)[0])
                 for c in commits:   
                         ws3['A'+str(row)]=item['idalerts']
@@ -683,11 +753,12 @@ def manual_validation_file():
                         ws3['C'+str(row)]=item['type']
                         ws3['D'+str(row)]=item['impact']
                         ws3['E'+str(row)]=item['filepath_on_coverity']
-                        #look at lifespan
+                        # look at lifespan
                         ws3['F'+str(row)]=item['diff']
-                        #complexity I can check on the commit diffs itself
+                        # complexity I can check on the commit diffs itself
                         ws3['G'+str(row)]=c['sha']
                         ws3['H'+str(row)]=c['message'].encode('ascii',errors='ignore').decode()
+                        ws3['I'+str(row)]=c['merge_date']
                         row+=1
 
         wb.save('Project_'+project+'.xlsx')
@@ -729,9 +800,10 @@ def invalidate_file_renamed_alerts():
                         print(cursor.rowcount)
 
 def file_renaming_info():
-        #we search this only for fixed alerts as
-        #alerts are supposed to be eliminated 
-        #when the file is renamed (deleted)
+        #Need to change this
+        # we search this only for fixed alerts as
+        # alerts are supposed to be eliminated 
+        # when the file is renamed (deleted)
         query='''select count(*) as c
                 from alerts
                 where stream= "''' +project+'''"
@@ -862,10 +934,10 @@ def update_fix_commit_infos():
 
                 query="insert into fix_complexity values("+str(cid)+","+str(aid)+","
                 for idx, arg in enumerate(arguments):
-                    #value cleaning
+                    # value cleaning
                     arg=str(arg) #if not string
                     arg=arg.strip() #if any whitespace ahead or trailing
-                    #remove illegal character
+                    # remove illegal character
                     arg=arg.replace('"',"'")
 
                     if is_number(arg) or arg=="null":
@@ -934,7 +1006,7 @@ def remove_blank_lines_and_comments(diff):
                 line=re.sub('//(.*)','',line) #removing single line comments
                 line=line.strip() #stripping trailing whitespaces
                 if not (line=='' or line=='\n'):
-                        #however changes will start with + or -
+                        # however changes will start with + or -
                         if line.startswith('+') or line.startswith('-'):
                                 temp=line[1:] #take the actual line
                                 temp=temp.strip() #stripping trailing whitespaces
@@ -995,20 +1067,18 @@ def process_commit(sha,filepath):
 
         pass
 if __name__ == "__main__":
-        #process_commit("64a98fc3b7a60080367935533af0471125b8abf5",'netwerk/cookie/nsCookieService.cpp')
-        # processing functions
-        # alerts_from_other_files()
+        #alerts_from_other_files()
         main_file_actionability()
-        # # invalidate_file_renamed_alerts()
+        # invalidate_file_renamed_alerts()
         
         
-        # # reporting functions
+        # # # reporting functions
         # methodology_infos()
         # get_alert_infos()
-        actionability_and_lifespan_report()
+        # actionability_and_lifespan_report()
         
-        # #update_fix_commit_infos()
+        # update_fix_commit_infos()
         # patch_complexity()
-        manual_validation_file()
+        #manual_validation_file()
 
         f.close()

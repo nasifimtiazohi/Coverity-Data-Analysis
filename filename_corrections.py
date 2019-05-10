@@ -38,39 +38,39 @@ for item in results:
 print(temp)
 
 #CORRECTION FOR SAMBA
-# i=0
-# for item in results:
-#     temp=item['filepath_on_coverity']
-#     cut='/samba'
-#     if temp.startswith(cut):
-#         temp=temp[6:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)
-# i=0
-# for item in results:
-#     temp=item['filepath_on_coverity']
-#     cut='/bin/default'
-#     if temp.startswith(cut):
-#         temp=temp[12:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)
-# i=0
-# for item in results:
-#     temp=item['filepath_on_coverity']
-#     cut='/base/src'
-#     if temp.startswith(cut):
-#         temp=temp[9:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)
+i=0
+for item in results:
+    temp=item['filepath_on_coverity']
+    cut='/samba'
+    if temp.startswith(cut):
+        temp=temp[6:]
+        fid=str(item['idfiles'])
+        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+        execute(query)
+        i+=1
+print(i)
+i=0
+for item in results:
+    temp=item['filepath_on_coverity']
+    cut='/bin/default'
+    if temp.startswith(cut):
+        temp=temp[12:]
+        fid=str(item['idfiles'])
+        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+        execute(query)
+        i+=1
+print(i)
+i=0
+for item in results:
+    temp=item['filepath_on_coverity']
+    cut='/base/src'
+    if temp.startswith(cut):
+        temp=temp[9:]
+        fid=str(item['idfiles'])
+        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+        execute(query)
+        i+=1
+print(i)
 
 #CORRECTION FOR KODI
 # i=0
@@ -101,26 +101,26 @@ print(temp)
 
 
 #CORRECTIONS FOR FIREFOX
-i=0
-for item in results:
-    temp=str(item['filepath_on_coverity'])
-    cut='/mozilla'
-    if temp.startswith(cut):
-        temp=temp[8:]
-        fid=str(item['idfiles'])
-        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-        execute(query)
-        i+=1
-print(i)
+# i=0
+# for item in results:
+#     temp=str(item['filepath_on_coverity'])
+#     cut='/mozilla'
+#     if temp.startswith(cut):
+#         temp=temp[8:]
+#         fid=str(item['idfiles'])
+#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+#         execute(query)
+#         i+=1
+# print(i)
 
-i=0
-for item in results:
-    temp=str(item['filepath_on_coverity'])
-    cut='/base/src/mozilla'
-    if temp.startswith(cut):
-        temp=temp[17:]
-        fid=str(item['idfiles'])
-        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-        execute(query)
-        i+=1
-print(i)   
+# i=0
+# for item in results:
+#     temp=str(item['filepath_on_coverity'])
+#     cut='/base/src/mozilla'
+#     if temp.startswith(cut):
+#         temp=temp[17:]
+#         fid=str(item['idfiles'])
+#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
+#         execute(query)
+#         i+=1
+# print(i)   
