@@ -3,7 +3,7 @@ look for other files if they have any commit ever in history,
 as prior check could miss some due to date range.
 If yes, put one in file commit.
 If no, then files that have no commits in filecommits,
-we will know that they are other files'''
+we will know that they are non-project files'''
 import pymysql
 import sys
 import datetime

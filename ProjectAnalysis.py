@@ -1,3 +1,6 @@
+'''analysis to get most infos for the RQs in the paper
+includes code for preprocessing commit diffs and 
+calculating fix complexity'''
 # import statement
 import pymysql
 import sys

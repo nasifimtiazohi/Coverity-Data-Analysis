@@ -1,3 +1,6 @@
+'''for selected files,
+add detailed commit history of that file
+alingside code diff information'''
 import pymysql
 import sys
 import datetime
