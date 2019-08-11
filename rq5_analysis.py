@@ -24,7 +24,7 @@ def fix_complexity():
                 from alerts a
                 join snapshots s
                 on a.last_snapshot_id = s.idsnapshots
-                join fix_complexity fc
+                join fix_complexity_fixed fc
                 on a.idalerts=fc.alert_id
                 where a.is_invalid=0
                 and a.status="Fixed"
@@ -38,11 +38,11 @@ def fix_complexity():
             if item['diff'] < 0:
                 continue
             lifespan.append(item['diff'])
-            complexity.append(float(item['infile_loc_change'])/item['infile_fixed_alerts'])
-        print(stat.spearmanr(complexity,lifespan))
+            complexity.append(float(item['infile_logical_change'])/item['infile_fixed_alerts'])
+        print(project, stat.spearmanr(complexity,lifespan))
 def severity():
     for project in projects:
-        query='''select b.impact, datediff(s.date,a.first_detected) as diff
+        query='''select b.impact, date diff(s.date,a.first_detected) as diff
                 from alerts a
                 join snapshots s
                 on a.last_snapshot_id = s.idsnapshots
