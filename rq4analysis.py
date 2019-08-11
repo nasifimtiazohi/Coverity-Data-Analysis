@@ -9,7 +9,7 @@ connection = pymysql.connect(host='localhost',
                              autocommit=True)
 
 
-TODO='TODO'
+TODO=''
 f= open("temp.txt","w")
 projects=['Linux','Firefox','Samba','Kodi','Ovirt-engine']
 def execute(query):
@@ -22,7 +22,7 @@ def all_complexity():
         for project in projects:
                 #f.write(project+'\n')
                 query='''select count(*) as c
-                        from actionability ac
+                        from actionability_fixed ac
                         join alerts a 
                         on a.idalerts=ac.alert_id
                         where a.stream="'''+project +'''"
@@ -33,7 +33,7 @@ def all_complexity():
                 
                 query='''select fc.*
                         from alerts a
-                        join actionability ac
+                        join actionability_fixed ac
                         on a.idalerts=ac.alert_id
                         join fix_complexity fc
                         on fc.alert_id=ac.alert_id
@@ -61,15 +61,15 @@ def all_complexity():
                         in_logical.append(logical_change)
                 net_function=TODO
                 in_function=TODO
-                temp=[project,fix_commit_tracked,round(np.median(files),1),net_function, round(np.median(net_loc),1),
-                round(np.median(net_logical),1),in_function, round(np.median(in_loc),1),round(np.median(in_logical),1)]
+                temp=[project,fix_commit_tracked,round(np.median(files),1), round(np.median(net_loc),1),
+                round(np.median(net_logical),1), round(np.median(in_loc),1),round(np.median(in_logical),1)]
                 f.write('&'.join(str(x) for x in temp)+r'\\'+'\n')
 
 def bug_complexity():
     for project in projects:
         #f.write(project+'\n')
         query='''select count(*) as c
-                from actionability ac
+                from actionability_fixed ac
                 join alerts a 
                 on a.idalerts=ac.alert_id
                 where a.stream="'''+project +'''"
@@ -81,7 +81,7 @@ def bug_complexity():
         
         query='''select fc.*
                 from alerts a
-                join actionability ac
+                join actionability_fixed ac
                 on a.idalerts=ac.alert_id
                 join fix_complexity fc
                 on fc.alert_id=ac.alert_id
@@ -110,13 +110,13 @@ def bug_complexity():
                 in_logical.append(logical_change)
         net_function=TODO
         in_function=TODO
-        temp=[project,fix_commit_tracked,round(np.median(files),1),net_function, round(np.median(net_loc),1),
-        round(np.median(net_logical),1),in_function, round(np.median(in_loc),1),round(np.median(in_logical),1)]
+        temp=[project,fix_commit_tracked,round(np.median(files),1), round(np.median(net_loc),1),
+        round(np.median(net_logical),1), round(np.median(in_loc),1),round(np.median(in_logical),1)]
         f.write('&'.join(str(x) for x in temp)+r'\\'+'\n')
 
 def per_type_analysis():
     query='''select b.type, count(*) as c
-        from actionability ac
+        from actionability_fixed ac
         join alerts a 
         on a.idalerts=ac.alert_id
         join bug_types b
@@ -124,7 +124,8 @@ def per_type_analysis():
         where a.is_invalid=0
         and ac.single_fix_commit is not null
         group by b.type
-        order by count(*) desc'''
+        order by count(*) desc
+        limit 10'''
     results=execute(query)
     for item in results:
         if item['c']<100:
@@ -133,7 +134,7 @@ def per_type_analysis():
         fix_commit_tracked=item['c']
         query='''select fc.*
                 from alerts a
-                join actionability ac
+                join actionability_fixed ac
                 on a.idalerts=ac.alert_id
                 join fix_complexity fc
                 on fc.alert_id=ac.alert_id
@@ -163,13 +164,12 @@ def per_type_analysis():
                 in_logical.append(logical_change)
         net_function=TODO
         in_function=TODO
-        temp=[typename,fix_commit_tracked,round(np.median(files),1),net_function, round(np.median(net_loc),1),
-        round(np.median(net_logical),1),in_function, round(np.median(in_loc),1),round(np.median(in_logical),1)]
+        temp=[typename,fix_commit_tracked,round(np.median(files),1), round(np.median(net_loc),1),
+        round(np.median(net_logical),1), round(np.median(in_loc),1),round(np.median(in_logical),1)]
         f.write('&'.join(str(x) for x in temp)+r'\\'+'\n')
         
 
 if __name__ == "__main__":
-    #per_type_analysis()
-    #all_complexity()
-        #bug_complexity()
-        per_type_analysis()
+    all_complexity()
+    bug_complexity()
+    per_type_analysis()
