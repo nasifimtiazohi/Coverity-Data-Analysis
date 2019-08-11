@@ -251,3 +251,5 @@ TSWLatexianTemp*
 
 # generated if using elsarticle.cls
 *.spl
+/.vs/Coverity-Data-Analysis/v16/.suo
+/.vs
