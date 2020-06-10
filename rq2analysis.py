@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 connection = pymysql.connect(host='localhost',
                              user='root',
-                             db='coverityscan',
+                             db='soverityscan_sandbox',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor,
                              autocommit=True)

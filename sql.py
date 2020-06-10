@@ -2,7 +2,7 @@ import pymysql
 import pandas as pd
 import csv
 import os
-database='coverityscanV2'
+database='soverityscan_sandbox_sandbox'
 import sqlalchemy as db
 engine = db.create_engine('mysql+pymysql://root:@localhost:3306/{}'.format(database))
 

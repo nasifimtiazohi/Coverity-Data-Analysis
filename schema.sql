@@ -3,9 +3,9 @@ SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
 SET @OLD_TIME_ZONE=@@session.time_zone;
 
-DROP SCHEMA IF EXISTS `coverityscan` ;
-CREATE SCHEMA IF NOT EXISTS `coverityscan` DEFAULT CHARACTER SET utf8;
-USE `coverityscan` ;
+DROP SCHEMA IF EXISTS `soverityscan_sandbox` ;
+CREATE SCHEMA IF NOT EXISTS `soverityscan_sandbox` DEFAULT CHARACTER SET utf8;
+USE `soverityscan_sandbox` ;
 
 CREATE TABLE `projects` (
   `idprojects` INT NOT NULL AUTO_INCREMENT,
@@ -67,7 +67,7 @@ CREATE TABLE `filecommits` (
 PRIMARY KEY (`idfilecommits`))
 COMMENT="this table keep track of unique file and commit pairs for ease of analysis";
 
-CREATE TABLE `coverityscan`.`commits` (
+CREATE TABLE `soverityscan_sandbox`.`commits` (
   -- I expect more info to come here. e.g. parent?
   `idcommits` INT NOT NULL AUTO_INCREMENT,
   `sha` VARCHAR(1023) NULL UNIQUE,
@@ -86,12 +86,12 @@ CREATE TABLE `coverityscan`.`commits` (
   `merge_date` DATETIME NOT NULL,
   PRIMARY KEY (`idcommits`));
 
-CREATE TABLE `coverityscan`.`commit_parents` (
+CREATE TABLE `soverityscan_sandbox`.`commit_parents` (
   `commit_id` INT NOT NULL,
   `parent_hash` VARCHAR(4095) NULL,
   `parent_commit_id` INT NULL);
 
-CREATE TABLE `coverityscan`.`diffs` (
+CREATE TABLE `soverityscan_sandbox`.`diffs` (
   `iddiffs` INT NOT NULL AUTO_INCREMENT,
   `filecommit_id` INT NOT NULL,
   `old_start_line` INT NULL,
@@ -101,7 +101,7 @@ CREATE TABLE `coverityscan`.`diffs` (
   `content` LONGTEXT NULL,
   PRIMARY KEY (`iddiffs`));
 
-CREATE TABLE `coverityscan`.`parsed_diff` (
+CREATE TABLE `soverityscan_sandbox`.`parsed_diff` (
   `diff_id` INT NOT NULL,
   `change_type` VARCHAR(255) NULL,
   `line_number` INT NULL,
@@ -140,7 +140,7 @@ CREATE TABLE `alerts` (
 UNIQUE `unique_index`(`cid`,`stream`),
 PRIMARY KEY (`idalerts`));
 
-CREATE TABLE `coverityscan`.`occurrences` (
+CREATE TABLE `soverityscan_sandbox`.`occurrences` (
 `alert_id` INT NOT NULL,
 `cid` INT NOT NULL,
 `event_id` INT NOT NULL,
@@ -151,7 +151,7 @@ CREATE TABLE `coverityscan`.`occurrences` (
 PRIMARY KEY (`alert_id`, `event_id`));
 
 
-CREATE TABLE `coverityscan`.`fix_complexity` (
+CREATE TABLE `soverityscan_sandbox`.`fix_complexity` (
   `commit_id` INT NOT NULL,
   `alert_id` INT NOT NULL,
   `file_count` FLOAT NULL,
@@ -165,7 +165,7 @@ CREATE TABLE `coverityscan`.`fix_complexity` (
  `infile_fixed_alerts` INT NULL,
   PRIMARY KEY (`commit_id`, `alert_id`));
 
-CREATE TABLE `coverityscan`.`actionability` (
+CREATE TABLE `soverityscan_sandbox`.`actionability` (
   `alert_id` INT NOT NULL,
   `actionability` INT NULL,
   `marked_bug` VARCHAR(45) NULL,
@@ -182,7 +182,7 @@ CREATE TABLE `coverityscan`.`actionability` (
   `suppress_keyword` VARCHAR(45) NULL,
   PRIMARY KEY (`alert_id`));
 
-CREATE TABLE `coverityscan`.`merge_date` (
+CREATE TABLE `soverityscan_sandbox`.`merge_date` (
   `commit_id` INT NOT NULL,
   `merge_date` DATETIME NULL,
   PRIMARY KEY (`commit_id`));

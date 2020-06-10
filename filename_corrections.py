@@ -10,7 +10,7 @@ project=str(sys.argv[1])
 #open sql connection 
 connection = pymysql.connect(host='localhost',
                              user='root',
-                             db='coverityscan',
+                             db='soverityscan_sandbox',
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor,
                              autocommit=True)
@@ -76,7 +76,7 @@ print(i)
 # i=0
 # for item in results:
 #     temp=item['filepath_on_coverity']
-#     cut='/home/jenkins/workspace/LINUX-64-CoverityScan'
+#     cut='/home/jenkins/workspace/LINUX-64-soverityscan_sandbox'
 #     if cut in temp:
 #         temp=temp[45:]
 #         fid=str(item['idfiles'])

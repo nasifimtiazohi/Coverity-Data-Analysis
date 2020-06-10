@@ -253,3 +253,5 @@ TSWLatexianTemp*
 *.spl
 /.vs/Coverity-Data-Analysis/v16/.suo
 /.vs
+
+.DS_Store

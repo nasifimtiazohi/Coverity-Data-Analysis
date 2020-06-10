@@ -1,5 +1,5 @@
 '''add snapshots from coverity'''
-import pymysql
+import sql
 import datetime
 import sys
 
@@ -14,12 +14,6 @@ def is_number(n):
         return False
     return True
 
-connection = pymysql.connect(host='localhost',
-                             user='root',
-                             db='coverityscan',
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor,
-                             autocommit=True)
 
 import xml.etree.ElementTree as ET
 tree = ET.parse(datafile)
