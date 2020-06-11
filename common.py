@@ -1,4 +1,6 @@
 import sql
+import numpy as np
+import pandas as pd
 
 def is_number(n):
     try:
@@ -25,6 +27,11 @@ def get_project_id(project):
     if not results:
         raise Exception('project not yet added.')    
     return results[0]['id']
+
+def replace_blankString_with_NaN(df):
+    return df.replace(r'^\s*$', np.nan, regex=True)
+    
+
 
 
 

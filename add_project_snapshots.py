@@ -63,14 +63,14 @@ def add_to_db(datalist, past_snapshot_id):
     for data in datalist:
         data['last_snapshot']=past_snapshot_id
         data['streamName']=projectId
-        for k in data.keys():
-            if data[k]=="":
-                data[k]=np.NaN
+        # for k in data.keys():
+        #     if data[k]=="":
+        #         data[k]=np.NaN
 
         past_snapshot_id=data["snapshotId"]
     
     df=pd.DataFrame(datalist)
-
+    df=common.replace_blankString_with_NaN(df)
     column_names_in_db=sql.get_table_columns('snapshot')
     df.columns=column_names_in_db
 

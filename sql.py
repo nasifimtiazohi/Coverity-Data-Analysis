@@ -2,6 +2,7 @@ import pymysql
 import pandas as pd
 import csv
 import os
+import datetime
 database='coverityscan_sandbox'
 import sqlalchemy as db
 engine = db.create_engine('mysql+pymysql://root:@localhost:3306/{}'.format(database))
@@ -43,6 +44,8 @@ def get_table_columns(table):
     return cols
 
 
+def convert_datetime_to_sql_format(s):
+    return datetime.datetime.strptime(s,'%m/%d/%y').strftime('%y/%m/%d')
+
 if __name__=='__main__':
-    q='select * from project'
-    print(execute(q))
+    print(get_table_columns('alert'))
