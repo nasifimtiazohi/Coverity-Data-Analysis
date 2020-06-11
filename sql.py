@@ -2,7 +2,7 @@ import pymysql
 import pandas as pd
 import csv
 import os
-database='soverityscan_sandbox_sandbox'
+database='coverityscan_sandbox'
 import sqlalchemy as db
 engine = db.create_engine('mysql+pymysql://root:@localhost:3306/{}'.format(database))
 
@@ -14,11 +14,12 @@ connection = pymysql.connect(host='localhost',
                              autocommit=True,
                              local_infile=True)
 
-def execute(query):
+def execute(query, arguments=()):
     with connection.cursor() as cursor:
-        cursor.execute(query)
+        cursor.execute(query, arguments)
         results = cursor.fetchall()
     return results
+
 
 def pd_read_sql(query):
     return pd.read_sql(query,connection)
