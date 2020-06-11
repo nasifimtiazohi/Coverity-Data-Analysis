@@ -254,4 +254,7 @@ TSWLatexianTemp*
 /.vs/Coverity-Data-Analysis/v16/.suo
 /.vs
 
-.DS_Store
+#possible data files
+.xml
+.csv
+.json
