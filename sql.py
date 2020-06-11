@@ -33,7 +33,16 @@ def load_df(table,df):
         cols.append(row['Field'])
     df=df[cols]
     df.to_sql(table, engine, if_exists='append',index=False,schema=database)
-    
+
+def get_table_columns(table):
+    q='SHOW COLUMNS FROM {}.{};'.format(database,table)
+    r=execute(q)
+    cols=[]
+    for row in r:
+        cols.append(row['Field'])
+    return cols
+
+
 if __name__=='__main__':
     q='select * from project'
     print(execute(q))

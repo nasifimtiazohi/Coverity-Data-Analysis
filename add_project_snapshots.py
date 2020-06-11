@@ -1,96 +1,94 @@
 '''add snapshots from coverity'''
 import sql
-import datetime
 import sys
-
-#read_arguments_here
-datafile=sys.argv[1]
-
-#mysql conncetion
-def is_number(n):
-    try:
-        int(n)
-    except ValueError:
-        return False
-    return True
-
-
 import xml.etree.ElementTree as ET
-tree = ET.parse(datafile)
-root = tree.getroot()
+from datetime import datetime 
+from dateutil import parser
+import pandas as pd
+import numpy as np
+import common
 
-errors=open("errors.txt","w")
 
-#get the whole tree in a list for better manipulation use
-#now in newest to oldest format
-datalist=[]
-for child in root:
-    data=child.attrib
-    datalist.append(data)
+def read_data(datfile):
+    '''Returns snapshot data from oldest to newest '''
 
-#turn into oldest to newest
-datalist.reverse()
+    datalist = common.read_xml_file_to_list_of_dicts(datafile)
+
+    #turn into oldest to newest as the file reads from newet to oldest
+    datalist.reverse()
     
+    return datalist
 
-past_snapshot_id="null"
-#we read it from newest to oldest
-for data in datalist:
-    for k in data.keys():
-        if data[k]=="":
-            data[k]="null"
-    # lastTriaged=data["lastTriaged"]
-    # print(lastTriaged)
-    # if lastTriaged!="null":
-    #     datetime.datetime.strptime(data["firstDetected"],'%m/%d/%y %H:%M').strftime('%y/%m/%d %H:%M')
-    arguments=[
-        data["snapshotId"],
-        data["streamName"],
-        data["snapshotDate"],
-        data["snapshotDescription"],
-        data["totalDetectedDefectCount"],
-        data["newlyDetectedDefectCount"],
-        data["newlyEliminatedDefectCount"],
-        data["analysisTime"],
-        data["linesOfCodeCount"],
-        data["CodeVersionDate"],
-        data["fileCount"],
-        data["functionCount"],
-        data["snapshotVersion"],
-        data["blankLinesCount"],
-        data["buildTime"],
-        data["commentLinesCount"],
-        data["HasAnalysisSummaries"],
-        data["snapshotTarget"],
-        str(past_snapshot_id)
-    ]
+def trim_old_data(datalist):
+    '''
+    See if data from input file already is there in the database.
+    If yes, trim that portion and only return the new data that db need to extend to
+
+    Parameter
+    ----------
+    full data of input file
+
+    Return
+    --------
+    trimmed data
+    id of last snapshot in database
+    '''
+    #get the project name
+    stream = datalist[0]['streamName']
+
+    #get the last snapshot in database
+    q = '''select s.date, s.id from snapshot s
+        join project p on s.project_id = p.id
+        where p.name=%s
+        order by date desc
+        limit 1;'''
+    results=sql.execute(q,(stream,))
     
-    # add an escaping string function. not the best practice. but easiest fix.
-    for a in arguments:
-        if type(a)==str:
-            a=connection.escape_string(a)
+    if not results:
+        return  datalist, 'null'
+    
+    lastSnapshotDateInDb = results[0]['date']
+    lastSnapshotId = results[0]['id']
 
-    query="insert into snapshots values ("
-    for idx, arg in enumerate(arguments):
-
-        #value cleaning
-        arg=str(arg) #if not string
-        arg=arg.strip() #if any whitespace ahead or trailing
-        #remove illegal character
-        arg=arg.replace('"',"'")
+    for i, data in enumerate(datalist):
+        if parser.parse(data['snapshotDate']) > lastSnapshotDateInDb:
+            break
+    
+    return datalist[i:], lastSnapshotId
 
 
+def add_to_db(datalist, past_snapshot_id):
+    projectId= common.get_project_id(datalist[0]['streamName'])
+    #we read it from oldest to newset
+    for data in datalist:
+        data['last_snapshot']=past_snapshot_id
+        data['streamName']=projectId
+        for k in data.keys():
+            if data[k]=="":
+                data[k]=np.NaN
 
-        if is_number(arg) or arg=="null":
-            query+=arg
-        else:
-            query+='"'+arg+'"'
-        if idx<len(arguments)-1:
-            query+=","
-    query+=");"
-    with connection.cursor() as cursor:
-        try:
-            cursor.execute(query)
-        except Exception as e:
-            print(e,query)
-            errors.write(str(e)+"\n")
-    past_snapshot_id=data["snapshotId"]
+        past_snapshot_id=data["snapshotId"]
+    
+    df=pd.DataFrame(datalist)
+
+    column_names_in_db=sql.get_table_columns('snapshot')
+    df.columns=column_names_in_db
+
+    sql.load_df('snapshot',df)
+
+
+
+if __name__=='__main__':
+    #pass xml filename as command line argument
+    datafile=sys.argv[1]
+
+    #read data and put it in a list from oldest to newest
+    datalist=read_data(datafile)
+    
+    #trim the portion that is already in database
+    datalist, lastSnapshot = trim_old_data(datalist)
+
+    add_to_db(datalist, lastSnapshot)
+
+    
+    
