@@ -58,9 +58,11 @@ def get_start_end_date(projectId):
     return d
 
 def get_repo_name(projectId):
-    q='select github_url from project where project id=%s'
+    q='select github_url from project where id=%s'
     results=sql.execute(q,(projectId,))
-    return results[0]['github_url']
+    gh_url =  results[0]['github_url']
+    #take the last part
+    return gh_url.split('/')[-1]
 
 if __name__=='__main__':
     logging.info("ASD")

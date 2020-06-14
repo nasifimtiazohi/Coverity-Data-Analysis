@@ -226,8 +226,6 @@ def mine_gitlog(fileId, filepath):
     return commits
 
 
-                  
-
 if __name__=="__main__":
     ''' add commit data for each affected file within start and end date'''
     # TODO: make paralellize and run for all projects at once
@@ -235,18 +233,21 @@ if __name__=="__main__":
     #read command line arguments
     #TODO: might just make it over all projects when paralellized
     project=sys.argv[1]
-    projectId=common.get_project_id()
-    path="/Users/nasifimtiaz/Desktop/repos_coverity"+common.get_repo_name(projectId)
+    projectId=common.get_project_id(project)
+    
+    path="/Users/nasifimtiaz/Desktop/repos_coverity/"+common.get_repo_name(projectId)
     os.chdir(path)
     # start=sys.argv[3]
     # end=sys.argv[4]
     
 
     # get all the files from database
-    files=get_all_files(project)
+    files=get_all_files(projectId)
 
     print(len(files),files[0],files[-1])
 
+    exit()
+    
     for f in files:
         #get fid and see if it is already covered
         file_id=f["id"]
