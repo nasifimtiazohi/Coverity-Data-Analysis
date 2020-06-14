@@ -30,24 +30,10 @@ def get_file_id(filename, projectId):
         results=sql.execute(selectQ,(filename, projectId))
     return results[0]['id']
 
-
-def separate_exiting_and_new_alerts(datalist, projectId):
-    #turn into oldest to newest 
-    datalist.reverse()
-
-    q="select distinct cid from alert where project_id=%s order by cid desc"
-    results = sql.execute(q,(projectId,))
-    lastCID=results[0]['cid']
-    for i,data in enumerate(datalist):
-        if int(data['cid']) > lastCID:
-            break
-    
-    existing=datalist[:i]
-    newAlerts=datalist[i:]
-
-    return existing, newAlerts
-
-def add_new_alerts(datalist, projectId):
+def process_alerts(datalist, projectId):
+    '''
+    takes datalist, process it as per db, and returns the dataframe
+    '''
     df=pd.DataFrame(datalist)
     df.insert(0,'id',[np.NaN]*len(df))
     df.insert(2,'project_id',[projectId]*len(df))
@@ -69,7 +55,56 @@ def add_new_alerts(datalist, projectId):
     column_names_in_db=sql.get_table_columns('alert')
     df.columns=column_names_in_db
 
+    return df
+
+def separate_exiting_and_new_alerts(datalist, projectId):
+    #turn into oldest to newest 
+    datalist.reverse()
+
+    q="select distinct cid from alert where project_id=%s order by cid desc"
+    results = sql.execute(q,(projectId,))
+    cidsInDb= {}  #implement a hashmap for efficient lookup
+    for item in results:
+        cidsInDb[item['cid']]=1
+
+    existingAlerts=[]
+    newAlerts=[]
+
+    for data in datalist:
+        if int(data['cid']) in cidsInDb:
+            existingAlerts.append(data)
+        else:
+            newAlerts.append(data)
+    
+    return existingAlerts, newAlerts
+    
+def add_new_alerts(datalist, projectId):
+    if not datalist:
+        return
+    df=process_alerts(datalist, projectId)
     sql.load_df('alert',df)
+
+def get_alert_id(cid, projectId):
+    q='select id from alert where cid=%s and project_id=%s'
+    results=sql.execute(q,(cid,projectId))
+    if not results:
+        return np.nan
+    else:
+        return results[0]['id']
+
+def update_existing_alerts(datalist, projectId):
+    if not datalist:
+        return
+    df=process_alerts(datalist, projectId)
+    
+    df= df.drop('id', axis=1)
+    df['id']=df.apply(lambda row: get_alert_id(row.cid, row.project_id), axis=1)
+    update=['status','owner','classification','action','ext_ref','last_snapshot_id',
+            'last_triaged','merge_extra','merge_key','owner_name']
+    sql.update_df('alert',df, update)
+
+    
+
 
 if __name__=="__main__":
     #read system arguments
@@ -78,10 +113,10 @@ if __name__=="__main__":
     projectId=common.get_project_id(project_name)
     datalist=common.read_xml_file_to_list_of_dicts(datafile)
     
-    existing, newAlerts= separate_exiting_and_new_alerts(datalist, projectId)
-    print("exisiting alerts: ",len(existing)," new alerts: ",len(newAlerts))
-
+    existingAlerts, newAlerts= separate_exiting_and_new_alerts(datalist, projectId)
+    print("exisiting alerts: ",len(existingAlerts)," new alerts: ",len(newAlerts))
     add_new_alerts(newAlerts, projectId)
+    update_existing_alerts(existingAlerts, projectId)
     
 
         
