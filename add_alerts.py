@@ -1,7 +1,6 @@
 ''' add alerts data from coverity'''
 import common, sql
 import datetime
-import requests
 import json
 import os
 import time

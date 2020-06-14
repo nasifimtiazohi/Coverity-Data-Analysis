@@ -98,5 +98,5 @@ def convert_datetime_to_sql_format(s):
     return datetime.datetime.strptime(s,'%m/%d/%y').strftime('%y/%m/%d')
 
 if __name__=='__main__':
-    pass
-    #print(update_df('alert',pd.DataFrame({})))
+    q='select name from project where id=%s'
+    print(execute(q,(1,)))
