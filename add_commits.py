@@ -1,7 +1,7 @@
 '''for selected files,
 add detailed commit history of that file
 alingside code diff information'''
-import pymysql
+import common, sql
 import sys
 import datetime
 import re
@@ -12,16 +12,7 @@ import shlex
 import dateutil.parser as dp
 
 
-
-
-connection = pymysql.connect(host='localhost',
-                             user='root',
-                             db='soverityscan_sandbox',
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor,
-                             autocommit=True)
-
-#for each project - project name passed as an argument to the script
+# for each project - project name passed as an argument to the script
 # for each file in files - doing the most outer loop
 # get all the commits within desired timeframe (or,all?) - doing for all
 # for all the file and commit pair put a new entry in filecommits - done

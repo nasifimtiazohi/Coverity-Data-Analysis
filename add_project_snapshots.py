@@ -1,12 +1,10 @@
 '''add snapshots from coverity'''
-import sql
+import common
+import sql, numpy as np, pandas as pd, logging
 import sys
-import xml.etree.ElementTree as ET
 from datetime import datetime 
 from dateutil import parser
-import pandas as pd
-import numpy as np
-import common
+
 
 
 def read_data(datfile):
@@ -33,6 +31,9 @@ def trim_old_data(datalist):
     trimmed data
     id of last snapshot in database
     '''
+    if not datalist:
+        logging.warn("no data provided")
+        return [], None
     #get the project name
     stream = datalist[0]['streamName']
 
@@ -50,23 +51,24 @@ def trim_old_data(datalist):
     lastSnapshotDateInDb = results[0]['date']
     lastSnapshotId = results[0]['id']
 
-    for i, data in enumerate(datalist):
+    i=0
+    while i<len(datalist):
+        data=datalist[i]
         if parser.parse(data['snapshotDate']) > lastSnapshotDateInDb:
             break
+        i+=1
     
     return datalist[i:], lastSnapshotId
 
 
 def add_to_db(datalist, past_snapshot_id):
+    if not datalist:
+        return 
     projectId= common.get_project_id(datalist[0]['streamName'])
     #we read it from oldest to newset
     for data in datalist:
         data['last_snapshot']=past_snapshot_id
         data['streamName']=projectId
-        # for k in data.keys():
-        #     if data[k]=="":
-        #         data[k]=np.NaN
-
         past_snapshot_id=data["snapshotId"]
     
     df=pd.DataFrame(datalist)
@@ -77,10 +79,17 @@ def add_to_db(datalist, past_snapshot_id):
     sql.load_df('snapshot',df)
 
 
+def update_end_date():
+    q='''update project p
+        set end_date=(select max(date) from snapshot s where project_id=p.id);'''
+    sql.execute(q)
 
 if __name__=='__main__':
     #pass xml filename as command line argument
-    datafile=sys.argv[1]
+    try:
+        datafile=sys.argv[1]
+    except:
+        logging.error("no input data provided as cli argument")
 
     #read data and put it in a list from oldest to newest
     datalist=read_data(datafile)
@@ -88,7 +97,12 @@ if __name__=='__main__':
     #trim the portion that is already in database
     datalist, lastSnapshot = trim_old_data(datalist)
 
+    logging.info("new data found: %s", len(datalist))
     add_to_db(datalist, lastSnapshot)
+
+    update_end_date()
+
+
 
     
     

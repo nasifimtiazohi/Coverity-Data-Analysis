@@ -1,6 +1,8 @@
 import sql
 import numpy as np
 import pandas as pd
+import coloredlogs, logging
+coloredlogs.install()
 
 def is_number(n):
     try:
@@ -11,8 +13,11 @@ def is_number(n):
 
 def read_xml_file_to_list_of_dicts(file):
     import xml.etree.ElementTree as ET
-    tree = ET.parse(file)
-    root = tree.getroot()
+    try:
+        tree = ET.parse(file)
+        root = tree.getroot()
+    except:
+        return [] #no xml data
 
     datalist=[]
     for child in root:
@@ -25,11 +30,14 @@ def get_project_id(project):
     q='select id from project where name=%s'
     results=sql.execute(q,(project,))
     if not results:
-        raise Exception('project not yet added.')    
+        raise Exception('project not there in db')    
     return results[0]['id']
 
 def replace_blankString_with_NaN(df):
     return df.replace(r'^\s*$', np.nan, regex=True)
+
+if __name__=='__main__':
+    logging.info("ASD")
     
 
 
