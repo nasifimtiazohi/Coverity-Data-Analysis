@@ -10,133 +10,103 @@ import subprocess
 import re
 import shlex
 import dateutil.parser as dp
+import logging
 
+'''
+for each project - project name passed as an argument to the script
+for each file in files - doing the most outer loop
+get all the commits within desired timeframe (or,all?) - doing for all
+for all the file and commit pair put a new entry in filecommits - done
+look if the commit hash (or, id) already exists in commits table - done
+if not, make a new entry with all the required info - done
+for each filecommits (file and commit pair)
+TODO:look for that files modification in that commit diffs
+TODO: and parse that info to insert into diffs table 
+'''
 
-# for each project - project name passed as an argument to the script
-# for each file in files - doing the most outer loop
-# get all the commits within desired timeframe (or,all?) - doing for all
-# for all the file and commit pair put a new entry in filecommits - done
-# look if the commit hash (or, id) already exists in commits table - done
-# if not, make a new entry with all the required info - done
-# for each filecommits (file and commit pair)
-# look for that files modification in that commit diffs
-# and parse that info to insert into diffs table 
+def get_all_files(projectId, start=None, end=None):
+    '''
+    return the list of all yet unprocessed files for fixed valid alerts
 
-def is_number(n):
-    try:
-        int(n)
-    except ValueError:
-        return False
-    return True
+    Parameters
+    -----------
+    projectId
+    start and end can be passed to select a range of search space for file id
 
-def project_exists(project):
-    query="select * from projects where name='"+project +"';"
-    with connection.cursor() as cursor:
-        cursor.execute(query)
-        result=cursor.fetchall()
-        if len(result)==1:
-            return True
-        elif len(result)==0:
-            print ("project does not exist in database")
-        else:
-            print("more than one project found. fatal bug")
-    return False
+    Return
+    -------
+    List of {Id , filepath}
+    '''
 
-def get_all_files(project):
-# and 
-#                 f.idfiles not in (
-#                     select distinct file_id from filecommits
-#                 )
-    with connection.cursor() as cursor:
-        query='''select distinct f.idfiles, f.filepath_on_coverity
-                from alerts a
-                join files f
-                on a.file_id=f.idfiles
-                where a.stream="''' + str(project) + \
-                '''" and a.is_invalid=0 and a.status='Fixed'
-                and f.idfiles > ''' + str(start)+ \
-                " and f.idfiles <= "+str(end)
-        if project=='Firefox':
-            query+= ''' and not (f.filepath_on_coverity  like '/obj-x86_64-unknown-linux-gnu%'
-                        or f.filepath_on_coverity  like '/obj-coverity%'
-                        or f.filepath_on_coverity  like '/obj-x86_64-pc-linux-gnu%'
-                        or f.filepath_on_coverity  like '/usr%')'''
-                    #embedding, rdf, 
-        #query="select * from files where project='"+str(project)+"' and idfiles >" + str(last_checked)+";"
-        cursor.execute(query)
-        results=cursor.fetchall()
-        return results
-
-def commitId_ifExists(sha):
-    with connection.cursor() as cursor:
-        query="select idcommits from commits where project='"+str(project)+"' and sha='"+str(sha)+"';"
-        cursor.execute(query)
-        result=cursor.fetchone()
-        if result and 'idcommits' in result.keys():
-            return result['idcommits']
-        return None
-
-def add_commit(commit):
-    arguments=[]
+    query = '''select distinct f.id, f.filepath_on_coverity
+            from alert a
+            join file f
+            on a.file_id=f.id
+            where f.project_id=%s
+            and a.is_invalid=0
+            and a.status='Fixed' '''
+    if start:
+        query+= ' where id >= %s '
+    if end:
+        query+= ' where id <= %s'
     
-    arguments.append(commit["hash"])
-    arguments.append(commit["author"])
-    arguments.append(commit["author_email"])
-    arguments.append(commit["author_date"].strftime("%Y-%m-%d %H:%M:%S"))
-    arguments.append(commit["committer"])
-    arguments.append(commit["committer_email"])
-    arguments.append(commit["commit_date"].strftime("%Y-%m-%d %H:%M:%S"))
-    arguments.append(commit["message"])
+
+    if projectId== 3: #for firefox
+        query+= ''' and not (f.filepath_on_coverity  like '/obj-x86_64-unknown-linux-gnu%'
+                    or f.filepath_on_coverity  like '/obj-coverity%'
+                    or f.filepath_on_coverity  like '/obj-x86_64-pc-linux-gnu%'
+                    or f.filepath_on_coverity  like '/usr%')'''
+                #embedding, rdf, 
     
+    if not start and not end:
+        results = sql.execute(query,(projectId,))
+    elif start and end:
+        results = sql.execute(query,(projectId,start,end))
+    elif start:
+        results = sql.execute(query,(projectId,start))
+    elif end:
+        results = sql.execute(query,(projectId,end))
+    
+    return results
+
+def commitId_exists(projectId, sha):
+    q='select id from commit where project_id=%s and sha=%s'
+    results=sql.execute(q,(projectId,sha))
+    if results:
+        return results[0]['id']
+    return None
+
+def add_commit(commit, projectId):
+    arguments=[
+        None, projectId,
+        commit["hash"],commit["author"],commit["author_email"],
+        commit["author_date"].strftime("%Y-%m-%d %H:%M:%S"),
+        commit["committer"], commit["committer_email"],
+        commit["commit_date"].strftime("%Y-%m-%d %H:%M:%S"), commit["message"]
+    ]
     #giving null to full commit data
-    affected_files='null'
-    lines_added='null'
-    lines_removed='null'
-    
-    arguments.append(affected_files)
-    arguments.append(lines_added)
-    arguments.append(lines_removed)
-
+    #NOT PARSING FULL COMMIT DATA AS NOT RELEVANT TO THIS PROJECT
+    affected_files= lines_added = lines_removed = None
+    arguments += [affected_files,lines_added,lines_removed]
     if 'merge' in commit.keys():
         arguments.append('True')
     else:
        arguments.append('False') 
-
-    arguments.append(project)
     
-    # add an escaping string function. not the best practice. but easiest fix.
-    for a in arguments:
-        if type(a)==str:
-            a=connection.escape_string(a)
-            a=a.replace('\\','')
+    q='insert into commit values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
+    sql.execute(q,tuple(arguments))
 
-    query="insert into commits values (null,"
-    for idx, arg in enumerate(arguments):
-        #value cleaning
-        arg=str(arg) #if not string
-        arg=arg.strip() #if any whitespace ahead or trailing
-        #remove illegal character
-        arg=arg.replace('"',"'")
+def filecommitId_exists(file_id,commit_id):
+    if not file_id or not commit_id:
+        logging.error("look in filecommitId_ifExists method")
+        return 
+    q='select id from filecommit where file_id=%s and commit_id=%s'
+    results=sql.execute(q,(file_id,commit_id))
+    if results:
+        return results[0]['id']
+    return None
 
-        if is_number(arg) or arg=="null":
-            query+=arg
-        else:
-            query+='"'+arg+'"'
-        if idx<len(arguments)-1:
-            query+=","
-    query+=");"
-    with connection.cursor() as cursor:
-        try:
-            query=query.replace("\\","")
-            cursor.execute(query)
-        except Exception as e:
-            print(e,query)
 
-def filecommitId_ifExists(file_id,commit_id):
-    if file_id==None:
-        file_id=-1
-    if commit_id==None:
-        commit_id=-1
     with connection.cursor() as cursor:
         query="select idfilecommits from filecommits where file_id="+str(file_id)+" and commit_id="+str(commit_id)+";"
         cursor.execute(query)
@@ -144,103 +114,31 @@ def filecommitId_ifExists(file_id,commit_id):
         if result and 'idfilecommits' in result.keys():
             return result['idfilecommits']
         return None
-def add_filecommits(file_id,filepath,commit_id,commit):
-    arguments=[]
-    arguments.append(str(file_id))
-    arguments.append(str(commit_id))
-    arguments.append(commit['change_type'])
-    arguments.append(commit['lines_added'])
-    arguments.append(commit['lines_removed'])
-    
-    # add an escaping string function. not the best practice. but easiest fix.
-    for a in arguments:
-        if type(a)==str:
-            a=connection.escape_string(a)
 
-    query="insert into filecommits values (null,"
-    for idx, arg in enumerate(arguments):
-        #value cleaning
-        arg=str(arg) #if not string
-        arg=arg.strip() #if any whitespace ahead or trailing
-        #remove illegal character
-        arg=arg.replace('"',"'")
+def add_filecommits(file_id, commit_id, commit):
+    arguments=[
+        None, file_id, commit_id,
+        commit['change_type'],commit['lines_added'],commit['lines_removed']
+    ]
+    q='insert into filecommit values(%s,%s,%s,%s,%s,%s)'
+    sql.execute(q,tuple(arguments))
 
-        if is_number(arg) or arg=="null":
-            query+=arg
-        else:
-            query+='"'+arg+'"'
-        if idx<len(arguments)-1:
-            query+=","
-    query+=");"
-    with connection.cursor() as cursor:
-        try:
-            # print(query)
-            cursor.execute(query)
-        except Exception as e:
-            print(e,query)
+def mine_gitlog(fileId, filepath):
+    def set_start_end_date():
+         #determine start and end date range to search commit within
+        temp=common.get_start_end_date()
+        start_date=temp['start_date']
+        end_date= temp['end_date']
+        ## overwrite start date if there is already any filecommit present in the database
+        ## (which means the file was analyzed at least upto that point before)
+        q='''select max(commit_date) as lastdate from filecommit fc
+            join commit c on fc.commit_id = c.id
+            where file_id=%s  '''
+        results=sql.execute(q,(fileId,))
+        if results:
+            start_date=results[0]['lastdate']
+    start_date, end_date = set_start_end_date()
 
-def parse_diff(diff,filecommit_id):
-    #can throw exception? 
-    # #handle them
-    results=[]
-    diff=diff.strip()
-
-    #what if there is more than 2 @? replace that with blanks
-    diff=re.sub('[@]{3,}','',diff)
-
-    diffs=diff.split("@@")
-    diffs=diffs[1:]
-    if len(diffs)%2!=0:
-        raise Exception("logic error")
-    i=0
-    while i<len(diffs):
-        temp=diffs[i]
-        temp=temp.strip()
-        temp=temp.split(" ")
-        if len(temp)!=2:
-            #don't know if it is only old and new
-            #skip this one
-            i+=2
-            continue
-        old=temp[0]
-        new=temp[1]
-        old=old.split(",")
-        if len(old)==2:
-            old_start_line=old[0]
-            old_count=old[1]
-        else:
-            old_start_line='null'
-            old_count='null'
-        new=new.split(",")
-        if len(new)==2:
-            new_start_line=new[0]
-            new_count=new[1]
-        else:
-            new_start_line='null'
-            new_count='null'
-        content=connection.escape_string(diffs[i+1])
-        temp=[filecommit_id,old_start_line,old_count,new_start_line,new_count,content]
-        results.append(temp)
-        i+=2
-    return results
-
-def get_start_end_date():
-    d={}
-    with connection.cursor() as cursor:
-        query="select start_date, end_date from projects where name='" + project + "';"
-        cursor.execute(query)
-        result=cursor.fetchone()
-        start=result['start_date']
-        end=result['end_date']
-        start=start.strftime('%Y-%m-%d')
-        d['start_date']=start
-        end=end.strftime('%Y-%m-%d')
-        d['end_date']=end
-        return d
-def mine_gitlog(filepath):
-    temp=get_start_end_date()
-    start_date=temp['start_date']
-    end_date= temp['end_date']
     try:
         lines = subprocess.check_output(
             shlex.split('git log --follow --pretty=fuller --stat \
@@ -251,8 +149,8 @@ def mine_gitlog(filepath):
             encoding="437"
             ).split('\n')
     except Exception as e:
-        print(e,"file does not exist?")
-        return []
+        logging.info("no commits found withn {} and %s ", e)
+
     commits=[]
     commit={}
     for idx, nextLine in enumerate(lines): 
@@ -323,103 +221,55 @@ def mine_gitlog(filepath):
             if lines[idx-1] and "=>" in lines[idx-1]:
                 #check if file renaming was done
                 commit['change_type']='ModificationType.RENAME'  
-    if len(commit)!=0:   
+    if commit:   
         commits.append(commit) 
     return commits
 
 
-
-def add_diff(commit,filepath,filecommit_id):
-    filepath=filepath.split("/")
-    filename=filepath[-1]
-    for m in commit.modifications:
-        if m.filename==filename:
-            try:
-                results=parse_diff(m.diff,filecommit_id)
-            except Exception as e:
-                print(e)
-                continue
-            for arguments in results:
-                # add an escaping string function. not the best practice. but easiest fix.
-                for a in arguments:
-                    if type(a)==str:
-                        a=connection.escape_string(a)
-                        
-                query="insert into diffs values (null,"
-                for idx, arg in enumerate(arguments):
-                    #value cleaning
-                    arg=str(arg) #if not string
-                    arg=arg.strip() #if any whitespace ahead or trailing
-                    #remove illegal character
-                    arg=arg.replace('"',"'")
-
-                    if is_number(arg) or arg=="null":
-                        query+=arg
-                    else:
-                        query+='"'+arg+'"'
-                    if idx<len(arguments)-1:
-                        query+=","
-                query+=");"
-                with connection.cursor() as cursor:
-                    try:
-                        cursor.execute(query)
-                    except Exception as e:
-                        print(e,query)
-
-def diffId_ifExists(filecommit_id):
-    if filecommit_id==None:
-        filecommit_id=-1
-    with connection.cursor() as cursor:
-        query="select iddiffs from diffs where filecommit_id="+str(filecommit_id)+";"
-        cursor.execute(query)
-        result=cursor.fetchone()
-        if result and 'iddiffs' in result.keys():
-            return result['iddiffs']
-        return None
-
-
                   
-''' add commit data for each affected file within start and end date'''
+
 if __name__=="__main__":
+    ''' add commit data for each affected file within start and end date'''
+    # TODO: make paralellize and run for all projects at once
+
     #read command line arguments
+    #TODO: might just make it over all projects when paralellized
     project=sys.argv[1]
-    path="/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
-    start=sys.argv[3]
-    end=sys.argv[4]
+    projectId=common.get_project_id()
+    path="/Users/nasifimtiaz/Desktop/repos_coverity"+common.get_repo_name(projectId)
     os.chdir(path)
+    # start=sys.argv[3]
+    # end=sys.argv[4]
     
-    #check if project exists
-    if not project_exists(project):
-        print("project does not exist")
-        exit()
 
     # get all the files from database
     files=get_all_files(project)
 
     print(len(files),files[0],files[-1])
+
     for f in files:
         #get fid and see if it is already covered
-
+        file_id=f["id"]
         #parse local filepath
         path=f["filepath_on_coverity"]
         path=path[1:] #cut the beginning slash
         print(path)
+
         commits=mine_gitlog(path)
         print(len(commits))
+
         for commit in commits:
             sha=commit["hash"]
-            if commitId_ifExists(sha)==None:
-                add_commit(commit) #not adding affected files count, lines added, and removed for now
-            commit_id=commitId_ifExists(sha)   
-            file_id=f["idfiles"]
-            if filecommitId_ifExists(file_id,commit_id)==None:
-                add_filecommits(file_id,path,commit_id,commit)
-            filecommit_id = filecommitId_ifExists(file_id,commit_id)
-        print(f['idfiles'])
-            #adding no diff
-       
-        
-    print(datetime.datetime.now())       
+            if not commitId_exists(projectId, sha):
+                #not adding affected files count, lines added, and removed for now in this script
+                add_commit(commit, projectId) 
+            commit_id=commitId_exists(projectId, sha)   
+            
+            if not filecommitId_exists(file_id,commit_id):
+                add_filecommits(file_id,commit_id,commit)
+            filecommit_id = filecommitId_exists(file_id,commit_id)
+        #adding no diff
+             
 
 
             
