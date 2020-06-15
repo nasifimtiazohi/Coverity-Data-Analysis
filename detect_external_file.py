@@ -49,6 +49,22 @@ def detect_external_file_and_put_one_commit_to_db_for_internals(projectId):
             commits=ac.process_commits(lines)
             ac.add_commits_and_filecommits(projectId,fileId,commits)
 
+def invalidate_external_file_alerts(projectId):
+    q='''update alert
+        set is_invalid=3
+        where id in
+        (select * from
+        (select a.id
+        from file f
+        join alert a
+            on f.id = a.file_id
+            and a.project_id=f.project_id
+        where f.project_id=%s
+        and (a.is_invalid is null)
+        and f.id not in
+        (select distinct file_id from filecommit)) t1) ; '''
+    sql.execute(q,(project,))
+
 if __name__=='__main__':
     # TODO: make paralellize and run for all projects at once
 
@@ -61,5 +77,7 @@ if __name__=='__main__':
     os.chdir(path)
     
     detect_external_file_and_put_one_commit_to_db_for_internals(projectId)
+    
+    invalidate_external_file_alerts(projectId)
 
     

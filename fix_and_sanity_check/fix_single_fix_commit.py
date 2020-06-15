@@ -1,3 +1,6 @@
+'''coverity and CID logic was added later.
+Add that to actionability script, and then remove this script '''
+
 import pymysql
 import numpy as np
 import re

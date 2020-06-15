@@ -1,4 +1,4 @@
-import pymysql
+import common, sql
 import os
 import sys
 import subprocess
@@ -88,3 +88,6 @@ for commit in commits:
     query='update commits set merge_date="'+date+'" where idcommits='+str(id)
     execute(query)
     print(query)
+
+if __name__=='__main__':
+    pass
