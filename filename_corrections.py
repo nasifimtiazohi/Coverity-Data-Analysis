@@ -1,126 +1,114 @@
 '''this file contains code
 on how I corrected filename prefixes 
 for each projects'''
-import pymysql 
+
+'''
+while extending dataset for an existing project,
+we assume the correction rules should apply to 
+new files found (count of new files should be small)
+For new project, we manually build this rules by exploration
+and by means achieve 100% accuracy.
+'''
+
+import common, sql 
 import sys
 
-#read the project name
-project=str(sys.argv[1])
 
-#open sql connection 
-connection = pymysql.connect(host='localhost',
-                             user='root',
-                             db='soverityscan_sandbox',
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor,
-                             autocommit=True)
+def get_all_files(projectId):
+    q='select * from file where project_id=%s'
+    return sql.execute(q,(projectId,))
 
-def execute(query):
-    with connection.cursor() as cursor:
-        cursor.execute(query)
-        results=cursor.fetchall()
-    return results
-
-query="select * from files where project='"+project+"';"
-
-results=execute(query)
+def get_base_names(files):
+    'look at base names when exploring a new project'
+    bases=[]
+    for file in files:
+        fullname=file['filepath_on_coverity']
+        temp=fullname.split('/')
+        if temp[1] not in bases:
+            bases.append(temp[1])
+    return bases
 
 temp=[]
 a=[]
-for item in results:
-    full=item['filepath_on_coverity']
-    t=full.split("/")
-    if t[1] not in temp:
-        temp.append(t[1])
-    if t[1]=='base':
-        print(full)
+hm={'Samba':['/samba','/bin/default','/base/src'],
+    'Kodi':['/home/jenkins/workspace/LINUX-64-soverityscan_sandbox'],
+    'Linux':['/linux'],
+    'Firefox':['/mozilla','/base/src/mozilla']
+    }
 
-print(temp)
+def startswithAny(s, checks):
+    for check in checks:
+        if s.startswith(check):
+            return check
+    return False
 
-#CORRECTION FOR SAMBA
-i=0
-for item in results:
-    temp=item['filepath_on_coverity']
-    cut='/samba'
-    if temp.startswith(cut):
-        temp=temp[6:]
-        fid=str(item['idfiles'])
-        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-        execute(query)
-        i+=1
-print(i)
-i=0
-for item in results:
-    temp=item['filepath_on_coverity']
-    cut='/bin/default'
-    if temp.startswith(cut):
-        temp=temp[12:]
-        fid=str(item['idfiles'])
-        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-        execute(query)
-        i+=1
-print(i)
-i=0
-for item in results:
-    temp=item['filepath_on_coverity']
-    cut='/base/src'
-    if temp.startswith(cut):
-        temp=temp[9:]
-        fid=str(item['idfiles'])
-        query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-        execute(query)
-        i+=1
-print(i)
-
-#CORRECTION FOR KODI
-# i=0
-# for item in results:
-#     temp=item['filepath_on_coverity']
-#     cut='/home/jenkins/workspace/LINUX-64-soverityscan_sandbox'
-#     if cut in temp:
-#         temp=temp[45:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)
+def correction(project,files):
+    if project not in hm:
+        return 0
+    checks=hm[project]
+    correctedCount=0
+    for item in files:
+        filename=item['filepath_on_coverity']
+        cut = startswithAny(filename, checks)
+        if cut:
+            corrected=filename[len(cut):]
+            fileId=item['id']
+            q='update file set filepath_on_coverity=%s where id=%s'
+            sql.execute(q,(corrected,fileId))
+            correctedCount+=1
+    return correctedCount
 
 
-#CORRECTIONS FOR LINUX
-# i=0
-# for item in results:
-#     temp=str(item['filepath_on_coverity'])
-#     cut='/linux'
-#     if temp.startswith(cut):
-#         temp=temp[6:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)
+def remove_duplicates(projectId):
+    q='''select filepath_on_coverity, count(*) as c
+            from file
+            where project_id = %s
+            group by filepath_on_coverity
+            having count(*) > 1'''
+    results=sql.execute(q,(projectId,))
 
+    for item in results:
+        filepath=item['filepath_on_coverity']
+        q='''select id from file
+            where filepath_on_coverity=%s
+            order by id asc '''
+        temp=sql.execute(q,(filepath,))
+        ids=[t['id'] for t in temp]
+        
+        max=-1
+        main_id=-1
+        for id in ids:
+            q='select count(*) as c from filecommit where file_id=%s'
+            c=sql.execute(q,(id,))
+            if c>max:
+                max=c
+                main_id=id
+        
+        
+        ids.remove(main_id)
 
-#CORRECTIONS FOR FIREFOX
-# i=0
-# for item in results:
-#     temp=str(item['filepath_on_coverity'])
-#     cut='/mozilla'
-#     if temp.startswith(cut):
-#         temp=temp[8:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)
+        for replace_id in ids:
+            print(replace_id)
+            #update alerts
+            q='update alert set file_id=%s where file_id=%s'
+            sql.execute(q,(main_id, replace_id))
 
-# i=0
-# for item in results:
-#     temp=str(item['filepath_on_coverity'])
-#     cut='/base/src/mozilla'
-#     if temp.startswith(cut):
-#         temp=temp[17:]
-#         fid=str(item['idfiles'])
-#         query='update files set filepath_on_coverity="'+temp+'" where idfiles='+fid
-#         execute(query)
-#         i+=1
-# print(i)   
+            # #update occurrences
+            # query="update occurrence set file_id="+str(main_id)+" where file_id="+str(replace_id)
+            # execute(query)
+
+            #delete from files
+            q='delete from file where id=%s'
+            sql.execute(q,(replace_id,))
+
+if __name__=='__main__':
+    #read the project name
+    project=sys.argv[1]
+    projectId=common.get_project_id(project)
+
+    files=get_all_files(projectId)
+
+    print(correction(project,files))
+
+    remove_duplicates(projectId)
+

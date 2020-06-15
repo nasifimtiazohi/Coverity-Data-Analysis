@@ -94,7 +94,7 @@ def add_commit(commit, projectId):
        arguments.append('False') 
     
     q='insert into commit values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
-    print("ekhane")
+    print("new commit being added")
     sql.execute(q,tuple(arguments))
 
 def filecommitId_exists(file_id,commit_id):
@@ -107,57 +107,17 @@ def filecommitId_exists(file_id,commit_id):
         return results[0]['id']
     return None
 
-
-    with connection.cursor() as cursor:
-        query="select idfilecommits from filecommits where file_id="+str(file_id)+" and commit_id="+str(commit_id)+";"
-        cursor.execute(query)
-        result=cursor.fetchone()
-        if result and 'idfilecommits' in result.keys():
-            return result['idfilecommits']
-        return None
-
 def add_filecommits(file_id, commit_id, commit):
     arguments=[
         None, file_id, commit_id,
         commit['change_type'],commit['lines_added'],commit['lines_removed']
     ]
     q='insert into filecommit values(%s,%s,%s,%s,%s,%s)'
-    print("ekhane")
+    print("new filecommit being added")
     sql.execute(q,tuple(arguments))
 
-def mine_gitlog(projectId, fileId, filepath):
-    def set_start_end_date():
-        '''
-        determine start and end date range to search commit within
-        returns as string
-        '''
-        start_date, end_date=common.get_start_end_date(projectId)
-        ## overwrite start date if there is already any filecommit present in the database
-        ## (which means the file was analyzed at least upto that point before)
-        q='''select max(commit_date) as lastdate from filecommit fc
-            join commit c on fc.commit_id = c.id
-            where file_id=%s  '''
-        results=sql.execute(q,(fileId,))
-        if results:
-            start_date=results[0]['lastdate']
-            start_date=start_date.strftime('%Y-%m-%d')
-        return start_date, end_date
-    start_date, end_date = set_start_end_date()
-    
-    print(start_date+end_date)
 
-    try:
-        lines = subprocess.check_output(
-            shlex.split('git log --follow --pretty=fuller --stat \
-            --after="'+start_date+ 
-            ' 00:00" --before="'+end_date+' 23:59"  \
-            -- '+filepath), 
-            stderr=subprocess.STDOUT,
-            encoding="437"
-            ).split('\n')
-    except Exception as e:
-        logging.info("no commits found withn {} and %s ", e)
-
+def process_commits(lines):
     commits=[]
     commit={}
     for idx, nextLine in enumerate(lines): 
@@ -228,9 +188,62 @@ def mine_gitlog(projectId, fileId, filepath):
             if lines[idx-1] and "=>" in lines[idx-1]:
                 #check if file renaming was done
                 commit['change_type']='ModificationType.RENAME'  
-    if commit:   
+    if commit:   #adding the final one  (loop exited before adding it)
         commits.append(commit) 
     return commits
+def mine_gitlog(projectId, fileId, filepath):
+    def set_start_end_date():
+        '''
+        determine start and end date range to search commit within
+        returns as string
+        '''
+        start_date, end_date=common.get_start_end_date(projectId)
+        ## overwrite start date if there is already any filecommit present in the database
+        ## (which means the file was analyzed at least upto that point before)
+        q='''select max(commit_date) as lastdate from filecommit fc
+            join commit c on fc.commit_id = c.id
+            where file_id=%s  '''
+        results=sql.execute(q,(fileId,))
+        if results:
+            start_date=results[0]['lastdate']
+            start_date=start_date.strftime('%Y-%m-%d')
+        return start_date, end_date
+    start_date, end_date = set_start_end_date()
+    
+    print(start_date+end_date)
+
+    try:
+        lines = subprocess.check_output(
+            shlex.split('git log --follow --pretty=fuller --stat \
+            --after="'+start_date+ 
+            ' 00:00" --before="'+end_date+' 23:59"  \
+            -- '+filepath), 
+            stderr=subprocess.STDOUT,
+            encoding="437"
+            ).split('\n')
+    except Exception as e:
+        logging.info("no commits found withn {} and %s ", e)
+
+    return process_commits(lines)
+    
+
+def add_commits_and_filecommits(projectId, fileId, commits):
+    for commit in commits:
+        sha=commit["hash"]
+        if not commitId_exists(projectId, sha):
+            #not adding affected files count, lines added, and removed for now in this script
+            add_commit(commit, projectId) 
+        commit_id=commitId_exists(projectId, sha)   
+        
+        if not filecommitId_exists(fileId,commit_id):
+            add_filecommits(fileId,commit_id,commit)
+        filecommit_id = filecommitId_exists(fileId,commit_id)
+
+    if commits:
+        #if we found any commit, then make is_processed to 1
+        #otherwise, go to detect external file script
+        q='update file set is_processed=1 where id=%s'
+        sql.execute(q,(fileId,))
 
 
 if __name__=="__main__":
@@ -264,16 +277,9 @@ if __name__=="__main__":
         commits=mine_gitlog(projectId, fileId, path)
         print("commits found: ", len(commits))
 
-        for commit in commits:
-            sha=commit["hash"]
-            if not commitId_exists(projectId, sha):
-                #not adding affected files count, lines added, and removed for now in this script
-                add_commit(commit, projectId) 
-            commit_id=commitId_exists(projectId, sha)   
-            
-            if not filecommitId_exists(fileId,commit_id):
-                add_filecommits(fileId,commit_id,commit)
-            filecommit_id = filecommitId_exists(fileId,commit_id)
+        add_commits_and_filecommits(projectId,fileId,commits)
+
+
         #adding no diff
              
         
