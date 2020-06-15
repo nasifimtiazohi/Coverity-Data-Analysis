@@ -42,6 +42,8 @@ def detect_external_file_and_put_one_commit_to_db_for_internals(projectId):
                 ).split('\n')
         count=len(lines)-1
         if count==0:
+            q='update file set is_processed=1 where id=%s'
+            sql.execute(q,(fileId,))
             print("external file found: ", filepath)
         else:
             commits=ac.process_commits(lines)
