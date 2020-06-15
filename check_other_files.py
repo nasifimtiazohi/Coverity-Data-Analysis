@@ -142,11 +142,11 @@ for item in results:
             commits.append(commit) 
         for commit in commits:
             sha=commit["hash"]
-            if ac.commitId_ifExists(sha)==None:
+            if ac.commitId_exists(sha)==None:
                 ac.add_commit(commit) #not adding affected files count, lines added, and removed for now
-            commit_id=ac.commitId_ifExists(sha)   
+            commit_id=ac.commitId_exists(sha)   
             file_id=item["idfiles"]
-            if ac.filecommitId_ifExists(file_id,commit_id)==None:
+            if ac.filecommitId_exists(file_id,commit_id)==None:
                 ac.add_filecommits(file_id,path,commit_id,commit)
-            ac.filecommit_id = ac.filecommitId_ifExists(file_id,commit_id)
+            ac.filecommit_id = ac.filecommitId_exists(file_id,commit_id)
         print(item['idfiles'])

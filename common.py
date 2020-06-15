@@ -40,6 +40,7 @@ def replace_blankString_with_NaN(df):
 
 
 def get_start_end_date(projectId):
+    '''returns as string '''
     d={}
 
     q="select start_date, end_date from project where id=%s"
@@ -55,7 +56,7 @@ def get_start_end_date(projectId):
     end=end.strftime('%Y-%m-%d')
     d['end_date']=end
 
-    return d
+    return d['start_date'], d['end_date']
 
 def get_repo_name(projectId):
     q='select github_url from project where id=%s'

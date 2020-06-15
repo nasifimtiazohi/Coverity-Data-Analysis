@@ -94,6 +94,7 @@ def add_commit(commit, projectId):
        arguments.append('False') 
     
     q='insert into commit values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
+    print("ekhane")
     sql.execute(q,tuple(arguments))
 
 def filecommitId_exists(file_id,commit_id):
@@ -121,14 +122,16 @@ def add_filecommits(file_id, commit_id, commit):
         commit['change_type'],commit['lines_added'],commit['lines_removed']
     ]
     q='insert into filecommit values(%s,%s,%s,%s,%s,%s)'
+    print("ekhane")
     sql.execute(q,tuple(arguments))
 
-def mine_gitlog(fileId, filepath):
+def mine_gitlog(projectId, fileId, filepath):
     def set_start_end_date():
-         #determine start and end date range to search commit within
-        temp=common.get_start_end_date()
-        start_date=temp['start_date']
-        end_date= temp['end_date']
+        '''
+        determine start and end date range to search commit within
+        returns as string
+        '''
+        start_date, end_date=common.get_start_end_date(projectId)
         ## overwrite start date if there is already any filecommit present in the database
         ## (which means the file was analyzed at least upto that point before)
         q='''select max(commit_date) as lastdate from filecommit fc
@@ -137,7 +140,11 @@ def mine_gitlog(fileId, filepath):
         results=sql.execute(q,(fileId,))
         if results:
             start_date=results[0]['lastdate']
+            start_date=start_date.strftime('%Y-%m-%d')
+        return start_date, end_date
     start_date, end_date = set_start_end_date()
+    
+    print(start_date+end_date)
 
     try:
         lines = subprocess.check_output(
@@ -246,18 +253,16 @@ if __name__=="__main__":
 
     print(len(files),files[0],files[-1])
 
-    exit()
-    
     for f in files:
         #get fid and see if it is already covered
-        file_id=f["id"]
+        fileId=f["id"]
         #parse local filepath
         path=f["filepath_on_coverity"]
         path=path[1:] #cut the beginning slash
         print(path)
 
-        commits=mine_gitlog(path)
-        print(len(commits))
+        commits=mine_gitlog(projectId, fileId, path)
+        print("commits found: ", len(commits))
 
         for commit in commits:
             sha=commit["hash"]
@@ -266,12 +271,12 @@ if __name__=="__main__":
                 add_commit(commit, projectId) 
             commit_id=commitId_exists(projectId, sha)   
             
-            if not filecommitId_exists(file_id,commit_id):
-                add_filecommits(file_id,commit_id,commit)
-            filecommit_id = filecommitId_exists(file_id,commit_id)
+            if not filecommitId_exists(fileId,commit_id):
+                add_filecommits(fileId,commit_id,commit)
+            filecommit_id = filecommitId_exists(fileId,commit_id)
         #adding no diff
              
-
+        
 
             
             
