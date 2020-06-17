@@ -20,13 +20,15 @@ for all the file and commit pair put a new entry in filecommits - done
 look if the commit hash (or, id) already exists in commits table - done
 if not, make a new entry with all the required info - done
 for each filecommits (file and commit pair)
-TODO:look for that files modification in that commit diffs
-TODO: and parse that info to insert into diffs table 
+-------------------------------------------------------------------------
+Not in this script but Done in actionability analysi are following-
+look for that files modification in that commit diffs
+and parse that info to insert into diffs table 
 '''
 
 def get_all_files(projectId, start=None, end=None):
     '''
-    return the list of all yet unprocessed files for fixed valid alerts
+    return the list of all files for fixed valid alerts
 
     Parameters
     -----------
@@ -94,7 +96,7 @@ def add_commit(commit, projectId):
        arguments.append('False') 
     
     q='insert into commit values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
-    print("new commit being added")
+    #print("new commit being added")
     sql.execute(q,tuple(arguments))
 
 def filecommitId_exists(file_id,commit_id):
@@ -113,7 +115,7 @@ def add_filecommits(file_id, commit_id, commit):
         commit['change_type'],commit['lines_added'],commit['lines_removed']
     ]
     q='insert into filecommit values(%s,%s,%s,%s,%s,%s)'
-    print("new filecommit being added")
+    #print("new filecommit being added")
     sql.execute(q,tuple(arguments))
 
 
@@ -206,17 +208,25 @@ def mine_gitlog(projectId, fileId, filepath):
         results=sql.execute(q,(fileId,))
         if results and results[0]['lastdate']:
             start_date=results[0]['lastdate']
-            start_date=start_date.strftime('%Y-%m-%d')
+            start_date=start_date
+        
+        #expanding window by one on both end
+        start_date=start_date - datetime.timedelta(days=1)
+        end_date=end_date + datetime.timedelta(days=1)
+        
+        #returning as string
+        start_date=start_date.strftime('%Y-%m-%d')
+        end_date=end_date.strftime('%Y-%m-%d')
         return start_date, end_date
     start_date, end_date = set_start_end_date()
     
-    print(start_date+end_date)
+    #print(start_date,end_date)
 
     try:
-        s='git log --follow --pretty=fuller --stat \
-            --after="'+start_date+ ' 00:00" --before="'+end_date+' 23:59"  \
-            -- '+filepath
-        print(s)
+        # s='git log --follow --pretty=fuller --stat \
+        #     --after="'+start_date+ ' 00:00" --before="'+end_date+' 23:59"  \
+        #     -- '+filepath
+        # print(s)
         lines = subprocess.check_output(
             shlex.split('git log --follow --pretty=fuller --stat \
             --after="'+start_date+ 
@@ -232,14 +242,18 @@ def mine_gitlog(projectId, fileId, filepath):
     
 
 def add_commits_and_filecommits(projectId, fileId, commits):
+    newcommit=0
+    newfilecommit=0
     for commit in commits:
         sha=commit["hash"]
         if not commitId_exists(projectId, sha):
             #not adding affected files count, lines added, and removed for now in this script
+            newcommit+=1
             add_commit(commit, projectId) 
         commit_id=commitId_exists(projectId, sha)   
         
         if not filecommitId_exists(fileId,commit_id):
+            newfilecommit+=1
             add_filecommits(fileId,commit_id,commit)
         filecommit_id = filecommitId_exists(fileId,commit_id)
 
@@ -248,11 +262,30 @@ def add_commits_and_filecommits(projectId, fileId, commits):
         #otherwise, go to detect external file script
         q='update file set is_processed=1 where id=%s'
         sql.execute(q,(fileId,))
+    
+    return newcommit,newfilecommit
 
 
-def test_files():
-    q='select * from file where id = 36037;'
-    return sql.execute(q)
+def mine_commits(projectId):
+    path="/Users/nasifimtiaz/Desktop/repos_coverity/"+common.get_repo_name(projectId)
+    os.chdir(path)
+    
+    # get all the files from database
+    files=get_all_files(projectId)
+
+    logging.info("%s files to be mined",len(files))
+
+    for f in files:
+        fileId=f["id"]
+        path=f["filepath_on_coverity"]
+        path=path[1:] #cut the beginning slash
+
+        commits=mine_gitlog(projectId, fileId, path)
+        
+        newcommit, newfilecommit = add_commits_and_filecommits(projectId,fileId,commits)
+        logging.info("new %s commits and %s filecommits added for %s",newcommit,newfilecommit,path)
+        #adding no diff
+             
 if __name__=="__main__":
     ''' add commit data for each affected file within start and end date'''
     # TODO: make paralellize and run for all projects at once
@@ -261,35 +294,8 @@ if __name__=="__main__":
     #TODO: might just make it over all projects when paralellized
     project=sys.argv[1]
     projectId=common.get_project_id(project)
+    mine_commits(projectId)
     
-    path="/Users/nasifimtiaz/Desktop/repos_coverity/"+common.get_repo_name(projectId)
-    os.chdir(path)
-    # start=sys.argv[3]
-    # end=sys.argv[4]
-    
-
-    # get all the files from database
-    #files=get_all_files(projectId)
-    files=test_files()
-
-    print(len(files),files[0],files[-1])
-
-    for f in files:
-        #get fid and see if it is already covered
-        fileId=f["id"]
-        #parse local filepath
-        path=f["filepath_on_coverity"]
-        path=path[1:] #cut the beginning slash
-        print(path)
-
-        commits=mine_gitlog(projectId, fileId, path)
-        print("commits found: ", len(commits))
-
-        #add_commits_and_filecommits(projectId,fileId,commits)
-
-
-        #adding no diff
-             
         
 
             

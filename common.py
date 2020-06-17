@@ -40,7 +40,7 @@ def replace_blankString_with_NaN(df):
 
 
 def get_start_end_date(projectId):
-    '''returns as string '''
+    '''returns as dateformat '''
     d={}
 
     q="select start_date, end_date from project where id=%s"
@@ -51,8 +51,8 @@ def get_start_end_date(projectId):
 
     start=result['start_date']
     end=result['end_date']
-    start=start.strftime('%Y-%m-%d')
-    end=end.strftime('%Y-%m-%d')
+    # start=start.strftime('%Y-%m-%d')
+    # end=end.strftime('%Y-%m-%d')
 
     return start, end
 
