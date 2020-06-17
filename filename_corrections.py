@@ -11,7 +11,7 @@ and by means achieve 100% accuracy.
 '''
 
 import common, sql 
-import sys
+import sys, logging
 
 
 def get_all_files(projectId):
@@ -67,6 +67,8 @@ def remove_duplicates(projectId):
             having count(*) > 1'''
     results=sql.execute(q,(projectId,))
 
+    logging.info("%s files have duplicates",len(results))
+
     for item in results:
         filepath=item['filepath_on_coverity']
         q='''select id from file
@@ -100,15 +102,22 @@ def remove_duplicates(projectId):
             #delete from files
             q='delete from file where id=%s'
             sql.execute(q,(replace_id,))
+        
+def resolve_duplicates(projectId):
+    files=get_all_files(projectId)
+
+    q='select name from project where id=%s'
+    project=sql.execute(q,(projectId,))[0]['name']
+
+    correctedCount= correction(project,files)
+    logging.info("%s files names have been corrected",correctedCount)
+
+    remove_duplicates(projectId)
 
 if __name__=='__main__':
     #read the project name
     project=sys.argv[1]
     projectId=common.get_project_id(project)
 
-    files=get_all_files(projectId)
-
-    print(correction(project,files))
-
-    remove_duplicates(projectId)
+    resolve_duplicates(projectId)
 
