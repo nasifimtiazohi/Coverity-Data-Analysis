@@ -8,7 +8,7 @@ import dateutil.parser
 import sys
 import pandas as pd
 import numpy as np
-
+import logging
 
 def get_alert_type_id(type, impact, category):
     selectQ='''select id from alert_type
@@ -41,7 +41,7 @@ def process_alerts(datalist, projectId):
     df['type']=df.apply(lambda row: get_alert_type_id(row.type, row.impact,row.category),axis=1)
     df['file']=df.apply(lambda row: get_file_id(row.file, row.project_id),axis=1)
     df['firstDetected']=df.apply(lambda row: sql.convert_datetime_to_sql_format(row.firstDetected),axis=1)
-
+    
     df['is_invalid']=[np.NaN]*len(df)
     drop=['impact','category','comparison','FirstSnapshotDate',
             'FirstSnapshotDescription', 'FirstSnapshotStream',
@@ -78,10 +78,15 @@ def separate_exiting_and_new_alerts(datalist, projectId):
     return existingAlerts, newAlerts
     
 def add_new_alerts(datalist, projectId):
+    before=common.get_alert_count(projectId)
+
     if not datalist:
         return
     df=process_alerts(datalist, projectId)
     sql.load_df('alert',df)
+
+    after=common.get_alert_count(projectId)
+    logging.info("%s new alerts added", after-before)
 
 def get_alert_id(cid, projectId):
     q='select id from alert where cid=%s and project_id=%s'
@@ -100,22 +105,25 @@ def update_existing_alerts(datalist, projectId):
     df['id']=df.apply(lambda row: get_alert_id(row.cid, row.project_id), axis=1)
     update=['status','owner','classification','action','ext_ref','last_snapshot_id',
             'last_triaged','merge_extra','merge_key','owner_name']
-    sql.update_df('alert',df, update)
+    affected_rows = sql.update_df('alert',df, update)
 
+    logging.info("%s rows updated",affected_rows)
+
+def add_n_update_alerts(projectId, datafile):
+    datalist=common.read_xml_file_to_list_of_dicts(datafile)
     
+    existingAlerts, newAlerts= separate_exiting_and_new_alerts(datalist, projectId)
+    logging.info('existing alerts: %s, new alerts:%s',len(existingAlerts),len(newAlerts))
 
+    add_new_alerts(newAlerts, projectId)
+    update_existing_alerts(existingAlerts, projectId)
 
 if __name__=="__main__":
     #read system arguments
     project_name=sys.argv[1]
     datafile=sys.argv[2]
     projectId=common.get_project_id(project_name)
-    datalist=common.read_xml_file_to_list_of_dicts(datafile)
     
-    existingAlerts, newAlerts= separate_exiting_and_new_alerts(datalist, projectId)
-    print("exisiting alerts: ",len(existingAlerts)," new alerts: ",len(newAlerts))
-    add_new_alerts(newAlerts, projectId)
-    update_existing_alerts(existingAlerts, projectId)
     
 
         

@@ -1,4 +1,5 @@
 import pymysql
+import math
 import numpy as np
 import pandas as pd
 import csv
@@ -16,10 +17,13 @@ connection = pymysql.connect(host='localhost',
                              autocommit=True,
                              local_infile=True)
 
-def execute(query, arguments=()):
+def execute(query, arguments=(), get_affected_rowcount=False):
     with connection.cursor() as cursor:
         cursor.execute(query, arguments)
         results = cursor.fetchall()
+        affected_rows=cursor.rowcount
+    if get_affected_rowcount:
+        return results, affected_rows
     return results
 
 
@@ -70,19 +74,24 @@ def update_df(table, df, updateColumns):
             q+='and '
     q+=';'
 
+    totalUpdates = 0 #keep track fof total affected updates
+
     def update(row):
-        nonlocal cols, primaryKeys,q
+        nonlocal cols, primaryKeys,q, totalUpdates
         args=[]
         for col in cols:
-            if row[col] is np.nan:
+            if pd.isna(row[col]):
                 args.append(None)
             else:
                 args.append(row[col])
         for col in primaryKeys:
             args.append(row[col])
         args=tuple(args)
-        execute(q,args)
+        affected_rows = execute(q,args, get_affected_rowcount=True)[1]
+        totalUpdates+=affected_rows
+
     df.apply(lambda row: update(row), axis=1)
+    return totalUpdates
 
 
 def get_table_columns(table):
@@ -98,5 +107,7 @@ def convert_datetime_to_sql_format(s):
     return datetime.datetime.strptime(s,'%m/%d/%y').strftime('%y/%m/%d')
 
 if __name__=='__main__':
-    q='select name from project where id=%s'
-    print(execute(q,(1,)))
+    q='update invalid_alert_category set id=0 where category="valid"'
+    with connection.cursor() as cursor:
+        cursor.execute(q)
+        print(cursor.rowcount)

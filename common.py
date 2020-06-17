@@ -36,7 +36,7 @@ def get_project_id(project):
     return results[0]['id']
 
 def replace_blankString_with_NaN(df):
-    return df.replace(r'^\s*$', np.nan, regex=True)
+    return df.replace(r'^\s*$', np.NaN, regex=True)
 
 
 def get_start_end_date(projectId):
@@ -94,6 +94,9 @@ def get_snapshot_count(projectId):
     q='select count(*) as c from snapshot where project_id=%s'
     return sql.execute(q,(projectId,))[0]['c']
 
+def get_alert_count(projectId):
+    q='select count(*) as c from alert where project_id=%s'
+    return sql.execute(q,(projectId,))[0]['c']
 if __name__=='__main__':
     a =get_snapshot_date(2,10922) 
     print(type(a))
