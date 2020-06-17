@@ -1,4 +1,9 @@
-import common, sql
+'''
+most probably redundant unused script.
+Delete it once project analysis is done.
+'''
+
+import pymysql
 import os
 import sys
 import subprocess
@@ -88,6 +93,3 @@ for commit in commits:
     query='update commits set merge_date="'+date+'" where idcommits='+str(id)
     execute(query)
     print(query)
-
-if __name__=='__main__':
-    pass

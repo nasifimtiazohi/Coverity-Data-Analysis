@@ -52,11 +52,9 @@ def get_start_end_date(projectId):
     start=result['start_date']
     end=result['end_date']
     start=start.strftime('%Y-%m-%d')
-    d['start_date']=start
     end=end.strftime('%Y-%m-%d')
-    d['end_date']=end
 
-    return d['start_date'], d['end_date']
+    return start, end
 
 def get_repo_name(projectId):
     q='select github_url from project where id=%s'
@@ -65,8 +63,40 @@ def get_repo_name(projectId):
     #take the last part
     return gh_url.split('/')[-1]
 
+
+def get_snapshot_date(projectId, snapshotId):
+    q='''select * from snapshot
+        where project_id=%s
+        and id=%s; '''
+    results=sql.execute(q,(projectId, snapshotId))
+    if results:
+        temp=results[0]
+        if temp['code_version_date']:
+            last_detected_date=temp['code_version_date']
+        else:
+            last_detected_date=temp["date"]
+        return last_detected_date
+    else:
+        logging.error('invalid arguments while finding snapshot date')
+
+def get_next_snapshotId(projectId, snapshotId):
+    q='''select * from snapshot
+        where project_id=%s
+        and last_snapshot=%s'''
+    results=sql.execute(q,(projectId, snapshotId))
+    if results:
+        return results[0]['id']
+    else:
+        logging.error('invalid arguments while finding snapshot date')
+
+
+def get_snapshot_count(projectId):
+    q='select count(*) as c from snapshot where project_id=%s'
+    return sql.execute(q,(projectId,))[0]['c']
+
 if __name__=='__main__':
-    logging.info("ASD")
+    a =get_snapshot_date(2,10922) 
+    print(type(a))
     
 
 

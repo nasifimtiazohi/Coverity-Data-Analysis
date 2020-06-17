@@ -22,145 +22,8 @@ path = "/Users/nasifimtiaz/Desktop/new_data/"+sys.argv[2]
 start=sys.argv[3]
 end=sys.argv[4]
 
-# open sql connection
-connection = pymysql.connect(host='localhost',
-                             user='root',
-                             db='soverityscan_sandbox',
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor,
-                             autocommit=True)
 
 
-f = open(project + "_brand_new_analysis.txt", "w")
-os.chdir(path)
-
-
-def execute(query):
-    with connection.cursor() as cursor:
-        cursor.execute(query)
-        results = cursor.fetchall()
-    return results
-
-
-def get_general_report():
-        # total number on snapshots, start date, and end_date, median interval between snapshots
-        query = '''select count(*) as c
-                from snapshots
-                where
-                stream="''' + project + '''";'''
-        snapshot_count = execute(query)[0]["c"]
-        f.write("total snapshots = " + str(snapshot_count) + '\n')
-
-        query = '''select start_date, end_date from projects
-                where name="''' + project + '''";'''
-        start_date = execute(query)[0]["start_date"]
-        end_date = execute(query)[0]["end_date"]
-        f.write("start date and end dates are: " +
-                str(start_date)+", "+str(end_date) + '\n')
-
-        query = '''select datediff(s1.date,s2.date) as diff
-                from snapshots s1
-                join snapshots s2
-                on s1.last_snapshot=s2.idsnapshots
-                where s1.last_snapshot is not null and
-                s2.stream="'''+project + \
-                '''" and s1.stream="''' + project + '''";'''
-        datediffs = execute(query)
-        temp = []
-        for d in datediffs:
-                temp.append(d["diff"])
-        median_interval = np.median(temp)
-        avg_interval = np.mean(temp)
-        f.write("median and average interval between snapshots are: " +
-                str(median_interval)+", "+str(avg_interval) + '\n')
-
-# # get alert infos
-
-
-def get_alert_infos():
-        query = '''select * from alerts where is_invalid=0 and stream="''' + project + '''";'''
-        all_alerts = execute(query)
-        total_alerts = len(all_alerts)
-        f.write("count of total alert: "+str(total_alerts) + '\n')
-
-        query = '''select count(*) as c from alerts where status="Fixed" and is_invalid=0 and stream="''' + \
-                                project + '''";'''
-        t = execute(query)[0]['c']
-        f.write("eliminated alerts: "+str(t)+" ")
-        t = (float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t) + '\n')
-
-        query = '''select count(*) as c from alerts where is_invalid=0 and classification= "Bug" and stream="''' + \
-                                project + '''";'''
-        t = execute(query)[0]['c']
-        f.write("marked bugs: "+str(t)+" ")
-        t = (float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t) + '\n')
-
-        query = '''select count(*) as c from alerts where is_invalid=0 and classification= "False Positive" and stream="''' + project + '''";'''
-        t = execute(query)[0]['c']
-        f.write("false positive: "+str(t)+" ")
-        t = (float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t) + '\n')
-
-        query = '''select count(*) as c from alerts where is_invalid=0 and classification= "Intentional" and stream="''' + project + '''";'''
-        t = execute(query)[0]['c']
-        f.write("intentional: "+str(t)+" ")
-        t = (float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t) + '\n')
-
-        query = '''select count(*) as c from alerts where status="New" and is_invalid=0 and stream="''' + \
-                                project + '''";'''
-        t = execute(query)[0]['c']
-        f.write("alive: "+str(t)+" ")
-        t = (float(t)/float(total_alerts))*100
-        f.write("proportion: "+str(t) + '\n')
-
-
-def alerts_from_other_files():
-        f.write('\n\n')
-        # get alerts from files which never existed in the git history
-        # change those alerts invalidity to 3
-        query = '''update alerts
-                set is_invalid=3
-                where idalerts in
-                (select idalerts from
-                (select distinct a.idalerts
-                from files f
-                join alerts a
-                on f.idfiles=a.file_id
-                where f.idfiles not in
-                (select distinct f.idfiles
-                from files f
-                join filecommits fc
-                on f.idfiles=fc.file_id
-                where f.project="''' + project+'''")
-                and f.project = "''' + project + '''" and a.is_invalid=0)as sub);'''
-        with connection.cursor() as cursor:
-                cursor.execute(query)
-                print("alerts from other files count affected: ", cursor.rowcount)
-
-        query = "select * from alerts where is_invalid=3 and stream='"+project+"';"
-        results = execute(query)
-        f.write("number of other files alerts are: "+str(len(results))+'\n')
-
-        # generate general reports
-        query = "select distinct status, count(*) as c from alerts where is_invalid=3 and stream='" + \
-                                               project+"' group by status;"
-        temp = execute(query)
-        f.write(str(temp)+'\n')
-
-        # generate general reports
-        query = "select distinct classification, count(*) as c from alerts where is_invalid=3 and stream='" + \
-                                                       project+"' group by classification;"
-        temp = execute(query)
-        f.write(str(temp)+'\n\n\n')
-
-        # #write the name of the other files
-        # query="select f.filepath_on_coverity from alerts a join files f on a.file_id=f.idfiles where a.is_invalid=3 and a.stream='"+project+"';"
-        # temp=execute(query)
-        # for t in temp:
-        #         f.write(str(t)+'\n')
 
 
 def search_suppression_keywords_in_commit_diffs(sha, filepath):
@@ -765,12 +628,7 @@ def manual_validation_file():
                         row+=1
 
         wb.save('Project_'+project+'.xlsx')
-def is_number(n):
-    try:
-        int(n)
-    except ValueError:
-        return False
-    return True
+
 def invalidate_file_renamed_alerts():
         '''look for alerts in actionability that has renamed 'yes'
         and invalidate them to 4 in alerts '''
@@ -1070,18 +928,16 @@ def process_commit(sha,filepath):
 
         pass
 if __name__ == "__main__":
-        #alerts_from_other_files()
         main_file_actionability()
-        # invalidate_file_renamed_alerts()
+        invalidate_file_renamed_alerts()
         
         
-        # # # reporting functions
-        # methodology_infos()
-        # get_alert_infos()
-        # actionability_and_lifespan_report()
+        # # reporting functions
+        methodology_infos()
+        actionability_and_lifespan_report()
         
-        # update_fix_commit_infos()
-        # patch_complexity()
-        #manual_validation_file()
+        update_fix_commit_infos()
+        patch_complexity()
+        manual_validation_file()
 
         f.close()

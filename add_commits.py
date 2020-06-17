@@ -204,7 +204,7 @@ def mine_gitlog(projectId, fileId, filepath):
             join commit c on fc.commit_id = c.id
             where file_id=%s  '''
         results=sql.execute(q,(fileId,))
-        if results:
+        if results and results[0]['lastdate']:
             start_date=results[0]['lastdate']
             start_date=start_date.strftime('%Y-%m-%d')
         return start_date, end_date
@@ -213,6 +213,10 @@ def mine_gitlog(projectId, fileId, filepath):
     print(start_date+end_date)
 
     try:
+        s='git log --follow --pretty=fuller --stat \
+            --after="'+start_date+ ' 00:00" --before="'+end_date+' 23:59"  \
+            -- '+filepath
+        print(s)
         lines = subprocess.check_output(
             shlex.split('git log --follow --pretty=fuller --stat \
             --after="'+start_date+ 
@@ -246,6 +250,9 @@ def add_commits_and_filecommits(projectId, fileId, commits):
         sql.execute(q,(fileId,))
 
 
+def test_files():
+    q='select * from file where id = 36037;'
+    return sql.execute(q)
 if __name__=="__main__":
     ''' add commit data for each affected file within start and end date'''
     # TODO: make paralellize and run for all projects at once
@@ -262,7 +269,8 @@ if __name__=="__main__":
     
 
     # get all the files from database
-    files=get_all_files(projectId)
+    #files=get_all_files(projectId)
+    files=test_files()
 
     print(len(files),files[0],files[-1])
 
@@ -277,7 +285,7 @@ if __name__=="__main__":
         commits=mine_gitlog(projectId, fileId, path)
         print("commits found: ", len(commits))
 
-        add_commits_and_filecommits(projectId,fileId,commits)
+        #add_commits_and_filecommits(projectId,fileId,commits)
 
 
         #adding no diff

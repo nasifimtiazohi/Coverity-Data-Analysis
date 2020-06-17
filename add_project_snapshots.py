@@ -7,9 +7,8 @@ from dateutil import parser
 
 
 
-def read_data(datfile):
+def read_data(datafile):
     '''Returns snapshot data from oldest to newest '''
-
     datalist = common.read_xml_file_to_list_of_dicts(datafile)
 
     #turn into oldest to newest as the file reads from newet to oldest
@@ -65,6 +64,10 @@ def add_to_db(datalist, past_snapshot_id):
     if not datalist:
         return 
     projectId= common.get_project_id(datalist[0]['streamName'])
+    
+    #snapshotCount prior to insertion
+    before=common.get_snapshot_count(projectId)
+
     #we read it from oldest to newset
     for data in datalist:
         data['last_snapshot']=past_snapshot_id
@@ -78,19 +81,18 @@ def add_to_db(datalist, past_snapshot_id):
 
     sql.load_df('snapshot',df)
 
+    #snapshotCount after insertion
+    after=common.get_snapshot_count(projectId)
+
+    logging.info('%s new snapshots inserted',after-before)
 
 def update_end_date():
     q='''update project p
         set end_date=(select max(date) from snapshot s where project_id=p.id);'''
     sql.execute(q)
 
-if __name__=='__main__':
-    #pass xml filename as command line argument
-    try:
-        datafile=sys.argv[1]
-    except:
-        logging.error("no input data provided as cli argument")
 
+def add_snapshots(datafile):
     #read data and put it in a list from oldest to newest
     datalist=read_data(datafile)
     
@@ -101,6 +103,15 @@ if __name__=='__main__':
     add_to_db(datalist, lastSnapshot)
 
     update_end_date()
+
+if __name__=='__main__':
+    #pass xml filename as command line argument
+    try:
+        datafile=sys.argv[1]
+    except:
+        logging.error("no input data provided as cli argument")
+
+    add_snapshots(datafile)
 
 
 
