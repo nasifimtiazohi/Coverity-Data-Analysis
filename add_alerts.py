@@ -42,7 +42,7 @@ def process_alerts(datalist, projectId):
     df['file']=df.apply(lambda row: get_file_id(row.file, row.project_id),axis=1)
     df['firstDetected']=df.apply(lambda row: sql.convert_datetime_to_sql_format(row.firstDetected),axis=1)
     
-    df['is_invalid']=[np.NaN]*len(df)
+    df['is_invalid']=[0]*len(df)
     drop=['impact','category','comparison','FirstSnapshotDate',
             'FirstSnapshotDescription', 'FirstSnapshotStream',
             'FirstSnapshotTarget', 'FirstSnapshotVersion', 'fixTarget',
