@@ -10,6 +10,10 @@ import pandas as pd
 import numpy as np
 import logging
 
+'''
+Note: all alerts are valid by default
+'''
+
 def get_alert_type_id(type, impact, category):
     selectQ='''select id from alert_type
             where type=%s and impact=%s and category=%s '''

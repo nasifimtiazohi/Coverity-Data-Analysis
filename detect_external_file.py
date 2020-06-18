@@ -5,7 +5,7 @@ If yes, PUT ONE IN FILE COMMIT FOR INDICATION.
 If no, then files that have no commits in filecommits,
 we will know that they are non-project files'''
 import common, sql
-import sys
+import sys, logging
 import datetime
 import re
 import os
@@ -44,7 +44,7 @@ def detect_external_file_and_put_one_commit_to_db_for_internals(projectId):
         if count==0:
             q='update file set is_processed=1 where id=%s'
             sql.execute(q,(fileId,))
-            print("external file found: ", filepath)
+            logging.info("external file found: %s", filepath)
         else:
             commits=ac.process_commits(lines)
             ac.add_commits_and_filecommits(projectId,fileId,commits)
@@ -60,10 +60,20 @@ def invalidate_external_file_alerts(projectId):
             on f.id = a.file_id
             and a.project_id=f.project_id
         where f.project_id=%s
-        and (a.is_invalid is null)
+        and (a.is_invalid=0 or a.is_invalid is null)
         and f.id not in
         (select distinct file_id from filecommit)) t1) ; '''
-    sql.execute(q,(project,))
+    affected_rows = sql.execute(q,(projectId,),get_affected_rowcount=True)[1]
+    logging.info("%s alerts have been invalided as external file",affected_rows)
+
+
+def handle_external_files(projectId):
+    path="/Users/nasifimtiaz/Desktop/repos_coverity/"+common.get_repo_name(projectId)
+    os.chdir(path)
+    
+    detect_external_file_and_put_one_commit_to_db_for_internals(projectId)
+    
+    invalidate_external_file_alerts(projectId)
 
 if __name__=='__main__':
     # TODO: make paralellize and run for all projects at once
@@ -73,11 +83,8 @@ if __name__=='__main__':
     project=sys.argv[1]
     projectId=common.get_project_id(project)
 
-    path="/Users/nasifimtiaz/Desktop/repos_coverity/"+common.get_repo_name(projectId)
-    os.chdir(path)
+    handle_external_files(projectId)
+
     
-    detect_external_file_and_put_one_commit_to_db_for_internals(projectId)
-    
-    invalidate_external_file_alerts(projectId)
 
     

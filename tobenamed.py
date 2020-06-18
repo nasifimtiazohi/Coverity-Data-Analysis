@@ -1,15 +1,26 @@
 import common, sql
-import re
+import re, logging
 
-
-# first look for file_activity with the main affected file
-def main_file_actionability(projectId):
+def get_fixed_alerts(projectId):
+    '''
+    The project code is currently designed to have new alerts invalidness 
+        to be set as 0 (valid by default)
+    Before coming to this phase, 
+        we already invalidate beforeStartDate,externalFile alert, toolErrorSpike.
+    After this process, 
+        we invalidate file renames
+        otherwise, keep the defualt validity
+    '''
     q='''select * from alert
-        where is_invalid is null
+        where (is_invalid=0 or is_invalid is null)
         and status = 'Fixed'
-        and project_id=%s;'''
-    alerts=sql.execute(q,(projectId,))
-    print("new alerts to analyze: ",len(alerts), " for project "+common.get_repo_name(projectId))
+        and project_id=%s
+        and id not in
+        (select alert_id from actionability);'''
+    return sql.execute(q,(projectId,))
+def main_file_actionability(projectId):
+    alerts=get_fixed_alerts(projectId)
+    logging.info("new alerts to analyze: %s for project %s",len(alerts),common.get_repo_name(projectId))
 
     for alert in alerts:
         aid=alert["id"]
@@ -38,7 +49,7 @@ def main_file_actionability(projectId):
         last_detected_date=last_detected_date.replace(hour=0,minute=0,second=0)
         first_not_detected_anymore_date=common.get_snapshot_date(projectId, common.get_next_snapshotId(projectId,alert['last_snapshot_id'] ))
         first_not_detected_anymore_date=first_not_detected_anymore_date.replace(hour=23,minute=59,second=59)
-        print(first_detected_date,last_detected_date,first_not_detected_anymore_date)
+        #print(first_detected_date,last_detected_date,first_not_detected_anymore_date)
         
         fileId=alert["file_id"]
         # look at if there's a commit (both author and commit date) within 
@@ -51,7 +62,8 @@ def main_file_actionability(projectId):
             or (c.author_date >= %s and c.author_date <= %s)) '''
         results=sql.execute(q,(fileId, first_detected_date,first_not_detected_anymore_date,
                                 first_detected_date,first_not_detected_anymore_date))
-        print(alert['cid'], fileId, results)
+        if len(results)==0:
+            print(alert['cid'], fileId, len(results), first_detected_date, first_not_detected_anymore_date)
         
 
         # merged_commits=[]
@@ -132,4 +144,8 @@ def main_file_actionability(projectId):
         #         print("hello",e)
 
 if __name__=='__main__':
+    '''
+    the current code determines actionability based on only the affected file's activity
+    the code can be extended to consider multiple files (if involved) if such data is available
+    '''
     main_file_actionability(1)

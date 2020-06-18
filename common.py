@@ -30,7 +30,7 @@ def get_project_id(project):
     q='select id from project where name=%s'
     results=sql.execute(q,(project,))
     if not results:
-        raise Exception('project not there in db') 
+        return None
     elif len(results) >1 :
         logging.error("more than one project with the name %s",project)
     return results[0]['id']

@@ -5,8 +5,6 @@ import sys
 from datetime import datetime 
 from dateutil import parser
 
-
-
 def read_data(datafile):
     '''Returns snapshot data from oldest to newest '''
     datalist = common.read_xml_file_to_list_of_dicts(datafile)

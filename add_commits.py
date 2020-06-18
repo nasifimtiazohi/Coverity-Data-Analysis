@@ -28,7 +28,7 @@ and parse that info to insert into diffs table
 
 def get_all_files(projectId, start=None, end=None):
     '''
-    return the list of all files for fixed valid alerts
+    return the list of all files for fixed valid alerts.
 
     Parameters
     -----------
@@ -45,7 +45,7 @@ def get_all_files(projectId, start=None, end=None):
             join file f
             on a.file_id=f.id
             where f.project_id=%s
-            and a.is_invalid=0
+            and (a.is_invalid=0 or a.is_invalid is null)
             and a.status='Fixed' '''
     if start:
         query+= ' where id >= %s '
@@ -86,9 +86,8 @@ def add_commit(commit, projectId):
         commit["committer"], commit["committer_email"],
         commit["commit_date"].strftime("%Y-%m-%d %H:%M:%S"), commit["message"]
     ]
-    #giving null to full commit data
     #NOT PARSING FULL COMMIT DATA AS NOT RELEVANT TO THIS PROJECT
-    affected_files= lines_added = lines_removed = None
+    affected_files= lines_added = lines_removed = None #giving null to full commit data
     arguments += [affected_files,lines_added,lines_removed]
     if 'merge' in commit.keys():
         arguments.append('True')
@@ -117,7 +116,6 @@ def add_filecommits(file_id, commit_id, commit):
     q='insert into filecommit values(%s,%s,%s,%s,%s,%s)'
     #print("new filecommit being added")
     sql.execute(q,tuple(arguments))
-
 
 def process_commits(lines):
     commits=[]
@@ -193,6 +191,7 @@ def process_commits(lines):
     if commit:   #adding the final one  (loop exited before adding it)
         commits.append(commit) 
     return commits
+
 def mine_gitlog(projectId, fileId, filepath):
     def set_start_end_date():
         '''
@@ -219,14 +218,9 @@ def mine_gitlog(projectId, fileId, filepath):
         end_date=end_date.strftime('%Y-%m-%d')
         return start_date, end_date
     start_date, end_date = set_start_end_date()
-    
     #print(start_date,end_date)
 
     try:
-        # s='git log --follow --pretty=fuller --stat \
-        #     --after="'+start_date+ ' 00:00" --before="'+end_date+' 23:59"  \
-        #     -- '+filepath
-        # print(s)
         lines = subprocess.check_output(
             shlex.split('git log --follow --pretty=fuller --stat \
             --after="'+start_date+ 
@@ -240,7 +234,6 @@ def mine_gitlog(projectId, fileId, filepath):
 
     return process_commits(lines)
     
-
 def add_commits_and_filecommits(projectId, fileId, commits):
     newcommit=0
     newfilecommit=0
@@ -265,7 +258,11 @@ def add_commits_and_filecommits(projectId, fileId, commits):
     
     return newcommit,newfilecommit
 
-
+def test_files():
+    '''get files to test'''
+    q='''select * from file where id in
+    (36047,36049, 36060) ''' 
+    return sql.execute(q) 
 def mine_commits(projectId):
     path="/Users/nasifimtiaz/Desktop/repos_coverity/"+common.get_repo_name(projectId)
     os.chdir(path)
@@ -281,11 +278,11 @@ def mine_commits(projectId):
         path=path[1:] #cut the beginning slash
 
         commits=mine_gitlog(projectId, fileId, path)
-        
         newcommit, newfilecommit = add_commits_and_filecommits(projectId,fileId,commits)
         logging.info("new %s commits and %s filecommits added for %s",newcommit,newfilecommit,path)
         #adding no diff
-             
+ 
+              
 if __name__=="__main__":
     ''' add commit data for each affected file within start and end date'''
     # TODO: make paralellize and run for all projects at once
