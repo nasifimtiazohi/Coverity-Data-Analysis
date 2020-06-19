@@ -28,6 +28,6 @@ if __name__=='__main__':
     # ac.mine_commits(projectId)
     # ef.handle_external_files(projectId)
 
-    act.main_file_actionability(projectId)
+    act.analyze_actionability(projectId)
 
     

@@ -94,7 +94,7 @@ def detect_file_rename_delete_in_a_commit(projectId, sha, filepath, change_type)
 def new_file_id_after_renaming(projectId, sha, filepath):
     if filepath.startswith('/'):
         filepath = filepath[1:]
-    
+
     common.switch_dir_to_project_path(projectId)
     lines = subprocess.check_output(
         shlex.split("git show --summary "+sha),
@@ -239,7 +239,8 @@ def main_file_actionability(projectId):
             hour=23, minute=59, second=59)
 
         fileId = alert["file_id"]
-        filepath = sql.execute('select filepath_on_coverity from file where id=%s', (fileId,))[0]['filepath_on_coverity']
+        filepath = sql.execute('select filepath_on_coverity from file where id=%s', (fileId,))[
+            0]['filepath_on_coverity']
         # look at if there's a commit (both author and commit date) within
         # first_detected and first_not_detected
         q = '''select c.id as idcommits, c.*, fc.*
@@ -258,7 +259,8 @@ def main_file_actionability(projectId):
         merged_commits = []
         if potential_commits:
             for item in potential_commits:
-                merge_date = get_merged_date(projectId, item['idcommits'], item['sha'])
+                merge_date = get_merged_date(
+                    projectId, item['idcommits'], item['sha'])
                 item['merge_date'] = merge_date
                 if merge_date >= last_detected_date and merge_date <= first_not_detected_anymore_date:
                     merged_commits.append(item)
@@ -279,9 +281,9 @@ def main_file_actionability(projectId):
             elif changeType == 'renamed':
                 renamed = 'yes'
                 transfered_alert_id = get_transferred_alert_id_while_file_renamed(projectId,
-                                                                last_commit['sha'], filepath,
-                                                                alert['alert_type_id'],
-                                                                last_detected_date, first_not_detected_anymore_date)
+                                                                                  last_commit['sha'], filepath,
+                                                                                  alert['alert_type_id'],
+                                                                                  last_detected_date, first_not_detected_anymore_date)
             else:
                 commits = []
                 for item in merged_commits:
@@ -294,7 +296,7 @@ def main_file_actionability(projectId):
                 for c in commits:
                     # look for suppression keywords in commit diff
                     suppression_word = search_suppression_keywords_in_commit_diffs(
-                                        projectId, c['sha'], c['filepath'])
+                        projectId, c['sha'], c['filepath'])
                     if suppression_word:
                         suppression = 'yes'
                         suppress_commit = c['commit_id']
@@ -317,11 +319,47 @@ def main_file_actionability(projectId):
         if marked_bug == 'yes' or single_fix_commit or fix_commits:
             actionability = 1
         arguments = [aid, actionability, marked_bug, file_activity_around_fix, single_fix_commit, fix_commits, deleted,
-              delete_commit, renamed, rename_commit, transfered_alert_id, suppression, suppress_commit, suppress_keyword]
+                     delete_commit, renamed, rename_commit, transfered_alert_id, suppression, suppress_commit, suppress_keyword]
         print(arguments)
-        q='insert into actionability values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
-        sql.execute(q,tuple(arguments))
+        q = 'insert into actionability values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
+        sql.execute(q, tuple(arguments))
 
+
+def invalidate_file_renamed_alerts():
+    '''look for alerts in actionability that has renamed 'yes'
+    and invalidate them to 4 in alerts '''
+    query = '''update alert 
+        set is_invalid=4
+        where id in 
+        (select alert_id from actionability 
+        where file_renamed="yes")'''
+    affectedCount= sql.execute(query,get_affected_rowcount=True)[1]
+    logging.info("%s alerts invalidated due to file renaming", affectedCount)
+    
+    '''if they have a transferred alert id then adjust first_detected'''
+    query = '''select * from actionability ac
+            join alert a
+            on a.id = ac.alert_id
+            where ac.file_renamed='yes'
+            and transfered_alert_id is not null;'''
+    results = sql.execute(query)
+    updated = 0
+    for item in results:
+        old_id = item['alert_id']
+        new_id = item['transfered_alert_id']
+        query = '''update alert
+                set first_detected=(
+                select first_detected from 
+                (select first_detected from alert
+                where id = %s) as sub)
+                where id=%s''' 
+        updated += sql.execute(query,(old_id,new_id),get_affected_rowcount=True)[1]
+    logging.info("%s alerts information updated due to file renaming", updated)
+        
+
+def analyze_actionability(projectId):
+    main_file_actionability(projectId)
+    invalidate_file_renamed_alerts()
 
 if __name__ == '__main__':
     '''
