@@ -23,195 +23,6 @@ start=sys.argv[3]
 end=sys.argv[4]
 
 
-
-
-
-def search_suppression_keywords_in_commit_diffs(sha, filepath):
-        keywords = [
-                r'coverity\[.*\]',
-                r'/\* fall through \*/',
-                '@OverridersMustCall', '@OverridersNeedNotCall',
-                '@CheckReturnValue',
-                '@GuardedBy',
-                '@SuppressWarnings',
-                '@CheckForNull',
-                '@Tainted', '@NotTainted',
-                '@SensitiveData',
-        ]
-        lines = subprocess.check_output(
-                shlex.split('git show '+sha+' -- '+filepath),
-                stderr=subprocess.STDOUT, encoding="437").split("\n")
-
-        for nextLine in lines:
-                if bool(re.match('\+', nextLine, re.I)):
-                        for keyword in keywords:
-                                if bool(re.search(keyword, nextLine, re.I)):
-                                        # found suppression word
-                                        if keyword == r'coverity\[.*\]':
-                                                temp = re.search(
-                                                    r'coverity\[(.*)\]', nextLine, re.I).group(1)
-                                                return 'coverity['+temp+']'
-                                        elif keyword == r'/\* fall through \*/':
-                                                return '/* fall through */'
-                                        else:
-                                                return keyword
-                else:
-                        pass
-        return None
-
-
-
-
-
-
-
-
-
-# first look for file_activity with the main affected file
-def main_file_actionability():
-        query="select * from alerts where is_invalid=0 and status='Fixed' and stream='"+project+"' \
-                        and idalerts not in (select alert_id from actionability) \
-                        and idalerts > "+str(start) + " and idalerts <"+str(end)
-        print(query)
-        all_alerts=execute(query)
-        print(len(all_alerts))
-        for alert in all_alerts:
-                aid=alert["idalerts"]
-                # initialize actionability columns with default values
-                actionability=0
-                marked_bug=None
-                file_activity_around_fix=None
-                single_fix_commit=None
-                fix_commits=None
-                deleted=None
-                delete_commit=None
-                renamed=None
-                rename_commit=None
-                transfered_alert_id=None
-                suppression=None
-                suppress_keyword=None
-                suppress_commit=None
-                
-                classification=alert['classification']
-                if bool(re.search('Bug',classification,re.I)):
-                        marked_bug='yes'
-
-                first_detected_date=alert['first_detected'].strftime("%Y-%m-%d")
-
-                last_snapshot=str(alert["last_snapshot_id"])
-                # get last detected dates
-                query="select * from snapshots where idsnapshots="+last_snapshot+" and stream='" +project +"';"
-                temp=execute(query)[0]
-                if temp['code_version_date']!=None:
-                        last_detected_date=temp['code_version_date']
-                else:
-                        last_detected_date=temp["date"]
-                last_detected_date=last_detected_date.strftime("%Y-%m-%d") +" 00:00:00" #to maintain start of the day
-                query="select * from snapshots where last_snapshot="+last_snapshot+" and stream='" +project +"';"
-                temp=execute(query)[0]
-                if temp['code_version_date']!=None:
-                        first_not_detected_anymore_date=temp['code_version_date']
-                else:
-                        first_not_detected_anymore_date=temp["date"]
-                first_not_detected_anymore_date=first_not_detected_anymore_date.strftime("%Y-%m-%d") +" 23:59:59" #to maintain end of the day
-
-                
-                fid=alert["file_id"]
-                # look at if there's a commit (both author and commit date) within 
-                # first_detected and first_not_detected
-                query='''select * from filecommits fc join commits c on fc.commit_id=c.idcommits 
-                        join files f on f.idfiles=fc.file_id
-                        where
-                        fc.file_id= ''' + str(fid) + ''' and ((c.commit_date >="''' +first_detected_date+ \
-                        '''" and c.commit_date <="''' +first_not_detected_anymore_date +'''")
-                        or (c.author_date >="''' +first_detected_date+ \
-                        '''" and c.author_date <="''' +first_not_detected_anymore_date +'''"))
-                        ;'''
-                #sanity check by mining git again?
-                results=execute(query)
-                merged_commits=[]
-                if len(results)>0:
-                        # for each commit also get the merged date
-                        for item in results:
-                                merge_date=get_merged_date(item['idcommits'],item['sha'])
-                                item['merge_date']=merge_date
-                                if merge_date>=last_detected_date and merge_date<=first_not_detected_anymore_date:
-                                        merged_commits.append(item)
-                results=merged_commits #need to refactor this
-                if len(results)>0:
-                        file_activity_around_fix='yes'
-
-                        # check if the file is deleted or renamed (involved moved) in the last commit
-                        last_commit=results[-1]
-                        temp=detect_file_rename_delete_in_a_commit(last_commit['sha'],last_commit['filepath_on_coverity'],last_commit['change_type'])
-                        if temp == 'deleted':
-                                deleted='yes'
-                                delete_commit=str(last_commit['idcommits'])
-                        elif temp == 'renamed':
-                                # find out if the alert was transitioned into a new alert_id
-                                # how?
-                                # look at the first_not_detected snapshot
-                                # if there's a newly detected alert ( first_detected > last snapshot)
-                                # and if it's in the renamed file with the same alert_type
-                                renamed='yes'
-                                rename_commit=str(last_commit['idcommits'])
-                                new_file_id=new_file_id_after_renaming(last_commit['sha'],last_commit['filepath_on_coverity'])
-                                if new_file_id:
-                                        query="select * from alerts where first_detected > '"+last_detected_date+"' and first_detected <= '"+first_not_detected_anymore_date+"' \
-                                                and file_id="+str(new_file_id) +" and bug_type="+str(alert['bug_type'])+";"
-                                        temp_results=execute(query)
-                                        if len(temp_results)==1:
-                                                transfered_alert_id=temp_results[0]['idalerts']
-                        else:
-                                commits=[]
-                                for item in results:
-                                        c={}
-                                        c['commit_id']=item['idcommits']
-                                        c['sha']=item['sha']
-                                        c['filepath']=item['filepath_on_coverity'][1:]
-                                        c['msg']=item['message']
-                                        commits.append(c)
-                                for c in commits:
-                                        # look for suppression keywords in commit diff
-                                        suppression_word=search_suppression_keywords_in_commit_diffs(c['sha'],c['filepath'])
-                                        if suppression_word!=None:
-                                                suppression='yes'
-                                                suppress_commit=str(c['commit_id'])
-                                                suppress_keyword=suppression_word
-                                                break
-                                if suppress_commit==None:
-                                        # developer fix
-                                        if len(commits)==1:
-                                                single_fix_commit=str(commits[0]['commit_id'])
-                                        else:
-                                                # look for keyword coverity, CID
-                                                temp=[]
-                                                for c in commits:
-                                                        temp.append(str(c['commit_id']))
-                                                        if (bool(re.search('coverity',c['msg'],re.I))) or (bool(re.search('CID[\s0-9]',c['msg'],re.I))):
-                                                                single_fix_commit=str(c['commit_id'])
-                                                fix_commits=','.join(temp)
-                        
-                # determine actionability
-                if marked_bug=='yes' or single_fix_commit!=None or fix_commits!=None:
-                        actionability=1
-                # print((str(aid),actionability,marked_bug,file_activity_around_fix,single_fix_commit,fix_commits,deleted, 
-                #         delete_commit,renamed,rename_commit,transfered_alert_id,suppression,suppress_commit,suppress_keyword))
-                try:
-                        with connection.cursor() as cursor:
-                                cursor.execute('insert into actionability values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)', 
-                                (str(aid),actionability,marked_bug,file_activity_around_fix,single_fix_commit,fix_commits,deleted, 
-                                delete_commit,renamed,rename_commit,transfered_alert_id,suppression,suppress_commit,suppress_keyword))
-                                print(str(aid))
-                except Exception as e:
-                        print("hello",e)
-
-
-
-
-
-
-
 # get alerts with no event history and make a temporary table for them 
 def fixed_alerts_with_history():
         with connection.cursor() as cursor:
@@ -528,37 +339,6 @@ def manual_validation_file():
 
         wb.save('Project_'+project+'.xlsx')
 
-def invalidate_file_renamed_alerts():
-        '''look for alerts in actionability that has renamed 'yes'
-        and invalidate them to 4 in alerts '''
-        query='''update alerts 
-                set is_invalid=4
-                where stream= "''' +project+'''"
-                and idalerts in
-                (select alert_id from actionability 
-                where file_renamed="yes")'''
-        execute(query)
-        '''if they have a transferred alert id then adjust first_detected'''
-        query='''select * from actionability ac
-                join alerts a
-                on a.idalerts = ac.alert_id
-                where ac.file_renamed='yes'
-                and a.stream="'''+project+'''"
-                and transfered_alert_id is not null;'''
-        results=execute(query)
-        for item in results:
-                old_id=item['alert_id']
-                new_id=item['transfered_alert_id']
-                query='''update alerts 
-                        set first_detected=(
-                        select first_detected from 
-                        (select first_detected from alerts
-                        where idalerts ='''+str(old_id)+''') as sub)
-                        where idalerts=''' +str(new_id)
-                with connection.cursor() as cursor:
-                        cursor.execute(query)
-                        print(cursor.rowcount)
-
 def file_renaming_info():
         #Need to change this
         # we search this only for fixed alerts as
@@ -583,6 +363,9 @@ def file_renaming_info():
         c=execute(query)[0]['c']
         f.write('the number of alerts that are transfered due to file renaming is: '+str(c)+'\n')
 
+
+
+'''Code starts here'''
 def patch_complexity():
         # revoking this function
         query='''select count(*) as c
@@ -827,16 +610,12 @@ def process_commit(sha,filepath):
 
         pass
 if __name__ == "__main__":
-        main_file_actionability()
-        invalidate_file_renamed_alerts()
-        
-        
-        # # reporting functions
-        methodology_infos()
-        actionability_and_lifespan_report()
-        
-        update_fix_commit_infos()
-        patch_complexity()
-        manual_validation_file()
+    # # reporting functions
+    methodology_infos()
+    actionability_and_lifespan_report()
+    
+    update_fix_commit_infos()
+    patch_complexity()
+    manual_validation_file()
 
-        f.close()
+    f.close()

@@ -6,6 +6,7 @@ import filename_corrections as fc
 import add_commits as ac
 import detect_external_file as ef
 import determine_actionability as act
+import patch_complexity as pc
 
 def read_cl_args():
     return sys.argv[1], sys.argv[2], sys.argv[3]
@@ -27,7 +28,7 @@ if __name__=='__main__':
     # fc.resolve_duplicates(projectId)
     # ac.mine_commits(projectId)
     # ef.handle_external_files(projectId)
-
-    act.analyze_actionability(projectId)
+    # act.analyze_actionability(projectId)
+    pc.update_fix_complexity(projectId)
 
     
