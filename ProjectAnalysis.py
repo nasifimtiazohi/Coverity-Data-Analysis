@@ -60,114 +60,13 @@ def search_suppression_keywords_in_commit_diffs(sha, filepath):
         return None
 
 
-def detect_file_rename_delete_in_a_commit(sha, filepath, change_type):
-        filepath = filepath[1:]
-        if type(change_type) == str and (bool(re.search('MODIFY', change_type, re.I)) or bool(re.search('ADD', change_type, re.I))):
-                return None
-        if type(change_type) == str and bool(re.search('RENAME', change_type, re.I)):
-                return 'renamed'
-        else:
-                lines = subprocess.check_output(
-                        shlex.split("git show --summary "+sha),
-                stderr=subprocess.STDOUT, encoding="437").split('\n')
-                for nextLine in lines:
-                        # look for only short filename in lines
-                        nextLine = nextLine.encode('ascii', 'ignore').decode()
-                        if filepath.split("/")[-1] in nextLine:
-                                if 'rename' in nextLine:
-                                        return 'renamed'
-                                elif 'delete' in nextLine:
-                                        return 'deleted'
-                return None
 
 
-def new_file_id_after_renaming(sha, filepath):
-        filepath = filepath[1:]
-        lines = subprocess.check_output(
-                shlex.split("git show --summary "+sha),
-                stderr=subprocess.STDOUT, encoding="437").split('\n')
-        rename_line = ''
-
-        filename = filepath.split("/")[-1]
-        for nextLine in lines:
-                # renaming info in commit message can ruin string matching logic
-                # however apartfrom rename, filename, and =>; git info also contain proportion with a %
-                # so checking all those 4 conditions in trying to be more accurate
-                if filename in nextLine and 'rename' in nextLine and '=>' in nextLine and '%' in nextLine:
-                        rename_line = nextLine
-        try:
-                matchlist = re.findall('{[^{}]*}', rename_line)
-                # being more restrictive (prolly not necessary) in having {} in this logic
-                if len(matchlist) == 1 and '{' in rename_line and '}' in rename_line:
-                        temp = re.search("{(.*)}", rename_line).group(1)
-                        temp = temp.split("=>")
-                        old_file = temp[0].strip()
-                        new_file = temp[1].strip()
-                        rename_line = rename_line.strip()
-                        start = rename_line.find('{')
-                        end = rename_line.find('}')
-                        new_filepath = rename_line[:start] + \
-                            new_file+rename_line[end+1:]
-                        new_filepath = new_filepath.replace('//', '/')
-                        new_filepath = new_filepath.split(' ')[1].strip()
-                        query = "select idfiles from files where filepath_on_coverity='/" + \
-                            new_filepath+"' and project='"+project+"';"
-                        return execute(query)[0]['idfiles']
-                # when the full name or filepath has been changed
-                elif len(matchlist) == 0:
-                        rename_line = rename_line.strip()
-                        temp = rename_line.split('=>')
-                        old_file = temp[0].strip()
-                        old_file = old_file.split(' ')[1].strip()
-                        new_file = temp[1].strip()
-                        new_filepath = new_file.split(' ')[0].strip()
-                        query = "select idfiles from files where filepath_on_coverity='/" + \
-                            new_filepath+"' and project='"+project+"';"
-                        return execute(query)[0]['idfiles']
-                else:
-                        return None
-        except Exception as e:
-                print("exception in rename discovery", e, rename_line)
-                return None
 
 
-def get_merged_date(id, sha):
-        query='select * from merge_date where commit_id='+str(id)
-        results=execute(query)
-        if len(results)>0:
-                return results[0]['merge_date'].strftime("%Y-%m-%d %H:%M:%S")
 
-        query='select * from commits where idcommits='+str(id)
-        commit=execute(query)[0]
 
-        lines = subprocess.check_output(
-            shlex.split("git when-merged -l "+sha),
-            stderr=subprocess.STDOUT, encoding="437").split('\n')
-        dateline=None
-        direct_commit=False
-        for nextLine in lines:
-                if bool(re.search('Commit is directly on this branch',nextLine,re.I)):
-                        direct_commit=True
-                if bool(re.match('Date:', nextLine,re.I)):
-                        dateline=nextLine
-                        break
-        if direct_commit or dateline==None:
-                if commit['author_date']>commit['commit_date']:
-                        #possible rebase
-                        date=commit['author_date'].strftime("%Y-%m-%d %H:%M:%S")
-                else:
-                        date=commit['commit_date'].strftime("%Y-%m-%d %H:%M:%S")
-        else:
-                date= re.match('Date:(.*)',dateline,re.I).group(1)
-                date=date.strip()
-                date=dp.parse(date)
-                date=date.strftime("%Y-%m-%d %H:%M:%S")
-        query='insert into merge_date values('+str(id)+',"'+str(date)+'");'
-        try:
-                execute(query)
-        except Exception as e:
-                print('synchronized machines',e)
-        return date
+
 # first look for file_activity with the main affected file
 def main_file_actionability():
         query="select * from alerts where is_invalid=0 and status='Fixed' and stream='"+project+"' \

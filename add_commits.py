@@ -82,9 +82,9 @@ def add_commit(commit, projectId):
     arguments=[
         None, projectId,
         commit["hash"],commit["author"],commit["author_email"],
-        commit["author_date"].strftime("%Y-%m-%d %H:%M:%S"),
+        commit["author_date"],
         commit["committer"], commit["committer_email"],
-        commit["commit_date"].strftime("%Y-%m-%d %H:%M:%S"), commit["message"]
+        commit["commit_date"], commit["message"]
     ]
     #NOT PARSING FULL COMMIT DATA AS NOT RELEVANT TO THIS PROJECT
     affected_files= lines_added = lines_removed = None #giving null to full commit data

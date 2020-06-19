@@ -5,6 +5,7 @@ import add_alerts as aa
 import filename_corrections as fc
 import add_commits as ac
 import detect_external_file as ef
+import determine_actionability as act
 
 def read_cl_args():
     return sys.argv[1], sys.argv[2], sys.argv[3]
@@ -25,7 +26,8 @@ if __name__=='__main__':
     # aa.add_n_update_alerts(projectId, alertFile)
     # fc.resolve_duplicates(projectId)
     # ac.mine_commits(projectId)
-    ef.handle_external_files(projectId)
+    # ef.handle_external_files(projectId)
 
+    act.main_file_actionability(projectId)
 
     

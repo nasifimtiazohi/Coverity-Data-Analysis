@@ -1,4 +1,5 @@
 import sql
+import os
 import numpy as np
 import pandas as pd
 import coloredlogs, logging
@@ -51,8 +52,6 @@ def get_start_end_date(projectId):
 
     start=result['start_date']
     end=result['end_date']
-    # start=start.strftime('%Y-%m-%d')
-    # end=end.strftime('%Y-%m-%d')
 
     return start, end
 
@@ -97,6 +96,11 @@ def get_snapshot_count(projectId):
 def get_alert_count(projectId):
     q='select count(*) as c from alert where project_id=%s'
     return sql.execute(q,(projectId,))[0]['c']
+
+def switch_dir_to_project_path(projectId):
+    path="/Users/nasifimtiaz/Desktop/repos_coverity/" + get_repo_name(projectId)
+    os.chdir(path)
+
 if __name__=='__main__':
     a =get_snapshot_date(2,10922) 
     print(type(a))
