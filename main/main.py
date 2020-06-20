@@ -23,12 +23,12 @@ if __name__=='__main__':
             ## before start date
         pass
     
-    # aps.add_snapshots(snapshotFile)
-    # aa.add_n_update_alerts(projectId, alertFile)
-    # fc.resolve_duplicates(projectId)
-    # ac.mine_commits(projectId)
-    # ef.handle_external_files(projectId)
-    # act.analyze_actionability(projectId)
+    aps.add_snapshots(snapshotFile)
+    aa.add_n_update_alerts(projectId, alertFile)
+    fc.resolve_duplicates(projectId)
+    ac.mine_commits(projectId)
+    ef.handle_external_files(projectId)
+    act.analyze_actionability(projectId)
     pc.update_fix_complexity(projectId)
 
     
