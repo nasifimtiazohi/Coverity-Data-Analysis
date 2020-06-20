@@ -138,7 +138,7 @@ def update_fix_complexity(projectId):
         arguments.append(infile_fixed_alerts)
         
         query='insert into fix_complexity values(%s,%s,%s,%s,%s,%s,%s,%s,%s)'
-        print(sql.execute(query,tuple(arguments),get_affected_rowcount=True)[1])
+        sql.execute(query,tuple(arguments))
 
 
 if __name__ == '__main__':

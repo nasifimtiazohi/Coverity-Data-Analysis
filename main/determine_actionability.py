@@ -265,8 +265,8 @@ def main_file_actionability(projectId):
                 if merge_date >= last_detected_date and merge_date <= first_not_detected_anymore_date:
                     merged_commits.append(item)
 
-        if marked_bug == 'yes' and not merged_commits:
-            raise Exception("marked bug but no fix commits found", aid, fileId)
+        # if marked_bug == 'yes' and not merged_commits:
+        #     raise Exception("marked bug but no fix commits found", aid, fileId)
 
         if merged_commits:
             file_activity_around_fix = 'yes'
