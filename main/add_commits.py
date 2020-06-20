@@ -11,6 +11,7 @@ import re
 import shlex
 import dateutil.parser as dp
 import logging
+from multiprocessing import Pool
 
 '''
 for each project - project name passed as an argument to the script
@@ -100,7 +101,7 @@ def add_commit(commit, projectId):
 
 def filecommitId_exists(file_id,commit_id):
     if not file_id or not commit_id:
-        logging.error("look in filecommitId_ifExists method")
+        logging.error("look in filecommitId_ifExists method",file_id,commit_id)
         return 
     q='select id from filecommit where file_id=%s and commit_id=%s'
     results=sql.execute(q,(file_id,commit_id))
@@ -243,7 +244,11 @@ def add_commits_and_filecommits(projectId, fileId, commits):
             #not adding affected files count, lines added, and removed for now in this script
             newcommit+=1
             add_commit(commit, projectId) 
-        commit_id=commitId_exists(projectId, sha)   
+        commit_id=commitId_exists(projectId, sha)  
+        
+        if not commit_id:
+            print(sha)
+            exit() 
         
         if not filecommitId_exists(fileId,commit_id):
             newfilecommit+=1
@@ -258,11 +263,16 @@ def add_commits_and_filecommits(projectId, fileId, commits):
     
     return newcommit,newfilecommit
 
-def test_files():
-    '''get files to test'''
-    q='''select * from file where id in
-    (36047,36049, 36060) ''' 
-    return sql.execute(q) 
+def mine_file(file, projectId):
+    fileId=file["id"]
+    path=file["filepath_on_coverity"]
+    path=path[1:] #cut the beginning slash
+
+    commits=mine_gitlog(projectId, fileId, path)
+    
+    newcommit, newfilecommit = add_commits_and_filecommits(projectId,fileId,commits)
+    logging.info("new %s commits and %s filecommits added for %s",newcommit,newfilecommit,path)
+
 def mine_commits(projectId):
     path="/Users/nasifimtiaz/Desktop/repos_coverity/"+common.get_repo_name(projectId)
     os.chdir(path)
@@ -272,15 +282,12 @@ def mine_commits(projectId):
 
     logging.info("%s files to be mined",len(files))
 
-    for f in files:
-        fileId=f["id"]
-        path=f["filepath_on_coverity"]
-        path=path[1:] #cut the beginning slash
+    for file in files:
+        mine_file(file,projectId)
+    # pool = Pool(os.cpu_count())
+    # pool.map(mine_file, files)
 
-        commits=mine_gitlog(projectId, fileId, path)
-        newcommit, newfilecommit = add_commits_and_filecommits(projectId,fileId,commits)
-        logging.info("new %s commits and %s filecommits added for %s",newcommit,newfilecommit,path)
-        #adding no diff
+        
  
               
 if __name__=="__main__":

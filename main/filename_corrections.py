@@ -81,7 +81,7 @@ def remove_duplicates(projectId):
         main_id=-1
         for id in ids:
             q='select count(*) as c from filecommit where file_id=%s'
-            c=sql.execute(q,(id,))
+            c=sql.execute(q,(id,))[0]['c']
             if c>max:
                 max=c
                 main_id=id
@@ -90,7 +90,6 @@ def remove_duplicates(projectId):
         ids.remove(main_id)
 
         for replace_id in ids:
-            print(replace_id)
             #update alerts
             q='update alert set file_id=%s where file_id=%s'
             sql.execute(q,(main_id, replace_id))

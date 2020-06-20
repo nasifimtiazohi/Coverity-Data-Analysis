@@ -33,6 +33,28 @@ def get_file_id(filename, projectId):
         results=sql.execute(selectQ,(filename, projectId))
     return results[0]['id']
 
+def map_column_names_to_db(df):
+    column_mapping={
+        'type':'alert_type_id', 
+        'firstDetected':'first_detected', 
+        'displayComponent':'component', 
+        'file':'file_id',
+        'occurrenceCount':'count', 
+        'cwe':'CWE', 
+        'externalReference':'ext_ref',
+        'FirstSnapshot':'first_snapshot_id', 
+        'functionMergeName':'function_merge_name', 
+        'issueKind':'issue_kind', 
+        'Language':'language',
+        'lastDetectedSnapshot':'last_snapshot_id', 
+        'lastTriaged':'last_triaged',
+        'mergeExtra':'merge_extra',
+        'mergeKey':'merge_key', 
+        'ownerName':'owner_name', 
+    }
+    df=df.rename(columns=column_mapping)
+    return df
+
 def process_alerts(datalist, projectId):
     '''
     takes datalist, process it as per db, and returns the dataframe
@@ -54,9 +76,8 @@ def process_alerts(datalist, projectId):
             'lastDetectedTarget', 'lastDetectedVersion','MISRARigor'
         ]    
     df=df.drop(drop, axis=1)
-
-    column_names_in_db=sql.get_table_columns('alert')
-    df.columns=column_names_in_db
+    
+    df=map_column_names_to_db(df)
 
     return df
 
