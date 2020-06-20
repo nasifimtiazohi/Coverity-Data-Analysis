@@ -5,6 +5,30 @@ import sys
 from datetime import datetime 
 from dateutil import parser
 
+def map_column_names_to_db(df):
+    column_mapping = {
+        "snapshotId":"id",
+        "streamName":"project_id",
+        "snapshotDate" : "date",
+        "snapshotDescription":"description",
+        "totalDetectedDefectCount" : "total_detected",
+        "newlyDetectedDefectCount": "newly_detected",
+        "newlyEliminatedDefectCount" : "newly_eliminated",
+        "analysisTime" :"analysis_time",
+        "blankLinesCount":"blank_lines",
+        "buildTime":"build_time",
+        "linesOfCodeCount":"lines_of_code",
+        "CodeVersionDate":"code_version_date",
+        "commentLinesCount" : "comment_lines",
+        "fileCount":"file_count",
+        "functionCount":"function_count",
+        "HasAnalysisSummaries" : "has_analysis_summaries",
+        "snapshotTarget":"target",
+        "snapshotVersion":"version"
+    }
+    df=df.rename(columns=column_mapping)
+    return df
+    
 def read_data(datafile):
     '''Returns snapshot data from oldest to newest '''
     datalist = common.read_xml_file_to_list_of_dicts(datafile)
@@ -74,8 +98,9 @@ def add_to_db(datalist, past_snapshot_id):
     
     df=pd.DataFrame(datalist)
     df=common.replace_blankString_with_NaN(df)
-    column_names_in_db=sql.get_table_columns('snapshot')
-    df.columns=column_names_in_db
+    df=map_column_names_to_db(df)
+    # column_names_in_db=sql.get_table_columns('snapshot')
+    # df.columns=column_names_in_db
 
     sql.load_df('snapshot',df)
 

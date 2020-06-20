@@ -112,7 +112,7 @@ def process_commit(projectId, sha, filepath):
 
 def update_fix_complexity(projectId):
     alerts = get_alerts(projectId)
-    logging.info("%s alerts to be analyzed",len(alerts))
+    logging.info("%s alerts to be analyzed for fix_complexity",len(alerts))
     for item in alerts:
         sha = item['sha']
         cid = item['idcommits']
@@ -138,7 +138,7 @@ def update_fix_complexity(projectId):
         arguments.append(infile_fixed_alerts)
         
         query='insert into fix_complexity values(%s,%s,%s,%s,%s,%s,%s,%s,%s)'
-        sql.execute(query,tuple(arguments))
+        print(sql.execute(query,tuple(arguments),get_affected_rowcount=True)[1])
 
 
 if __name__ == '__main__':

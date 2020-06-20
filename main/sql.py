@@ -5,7 +5,7 @@ import pandas as pd
 import csv
 import os
 import datetime
-database='coverityscan_sandbox'
+database='coverityscanV2'
 import sqlalchemy as db
 engine = db.create_engine('mysql+pymysql://root:@localhost:3306/{}'.format(database))
 

@@ -9,7 +9,7 @@ create table alert_type
     impact   varchar(255) null,
     category varchar(255) null,
     constraint alert_type_pk
-        unique (type)
+        unique (type, impact, category)
 )
     charset = utf8;
 

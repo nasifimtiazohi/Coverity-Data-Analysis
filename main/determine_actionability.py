@@ -320,7 +320,7 @@ def main_file_actionability(projectId):
             actionability = 1
         arguments = [aid, actionability, marked_bug, file_activity_around_fix, single_fix_commit, fix_commits, deleted,
                      delete_commit, renamed, rename_commit, transfered_alert_id, suppression, suppress_commit, suppress_keyword]
-        print(arguments)
+        
         q = 'insert into actionability values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
         sql.execute(q, tuple(arguments))
 
