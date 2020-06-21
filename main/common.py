@@ -63,11 +63,11 @@ def get_repo_name(projectId):
     return gh_url.split('/')[-1]
 
 
-def get_snapshot_date(projectId, snapshotId):
+def get_snapshot_date(projectId, snapshotId, connection=None):
     q='''select * from snapshot
         where project_id=%s
         and id=%s; '''
-    results=sql.execute(q,(projectId, snapshotId))
+    results=sql.execute(q,(projectId, snapshotId), connection=connection )
     if results:
         temp=results[0]
         if temp['code_version_date']:
@@ -78,15 +78,19 @@ def get_snapshot_date(projectId, snapshotId):
     else:
         logging.error('invalid arguments while finding snapshot date')
 
-def get_next_snapshotId(projectId, snapshotId):
+def get_next_snapshotId(projectId, snapshotId, connection = None):
     q='''select * from snapshot
         where project_id=%s
         and last_snapshot=%s'''
-    results=sql.execute(q,(projectId, snapshotId))
+    results=sql.execute(q,(projectId, snapshotId), connection=connection)
     if results:
-        return results[0]['id']
+        try:
+            return results[0]['id']
+        except Exception as e:
+            raise Exception(e,snapshotId,projectId)
     else:
-        logging.error('invalid arguments while finding snapshot date')
+        raise Exception(e,snapshotId,projectId)
+        logging.error('invalid arguments while finding snapshot date',snapshotId)
 
 
 def get_snapshot_count(projectId):
@@ -100,6 +104,16 @@ def get_alert_count(projectId):
 def switch_dir_to_project_path(projectId):
     path="/Users/nasifimtiaz/Desktop/repos_coverity/" + get_repo_name(projectId)
     os.chdir(path)
+
+def get_file_id(filename, projectId,connection=None):
+    selectQ='select id from file where filepath_on_coverity =%s and project_id=%s '
+    results=sql.execute(selectQ,(filename, projectId), connection=connection)
+    if not results:
+        insertQ='insert into file values(null,%s,%s,null)'
+        sql.execute(insertQ,(projectId, filename), connection=connection)
+        results=sql.execute(selectQ,(filename, projectId), connection=connection)
+    return results[0]['id']
+
 
 if __name__=='__main__':
     a =get_snapshot_date(2,10922) 

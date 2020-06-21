@@ -24,15 +24,6 @@ def get_alert_type_id(type, impact, category):
         results=sql.execute(selectQ,(type, impact, category))
     return results[0]['id']
 
-def get_file_id(filename, projectId):
-    selectQ='select id from file where filepath_on_coverity =%s and project_id=%s '
-    results=sql.execute(selectQ,(filename, projectId))
-    if not results:
-        insertQ='insert into file values(null,%s,%s,null)'
-        sql.execute(insertQ,(projectId, filename))
-        results=sql.execute(selectQ,(filename, projectId))
-    return results[0]['id']
-
 def map_column_names_to_db(df):
     column_mapping={
         'type':'alert_type_id', 
@@ -65,7 +56,7 @@ def process_alerts(datalist, projectId):
     df=common.replace_blankString_with_NaN(df)
     
     df['type']=df.apply(lambda row: get_alert_type_id(row.type, row.impact,row.category),axis=1)
-    df['file']=df.apply(lambda row: get_file_id(row.file, row.project_id),axis=1)
+    df['file']=df.apply(lambda row: common.get_file_id(row.file, row.project_id),axis=1)
     df['firstDetected']=df.apply(lambda row: sql.convert_datetime_to_sql_format(row.firstDetected),axis=1)
     
     df['is_invalid']=[0]*len(df)

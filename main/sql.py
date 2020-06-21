@@ -9,7 +9,7 @@ database='coverityscanV2'
 import sqlalchemy as db
 engine = db.create_engine('mysql+pymysql://root:@localhost:3306/{}'.format(database))
 
-connection = pymysql.connect(host='localhost',
+global_conn = pymysql.connect(host='localhost',
                              user='root',
                              db=database,
                              charset='utf8mb4',
@@ -17,7 +17,20 @@ connection = pymysql.connect(host='localhost',
                              autocommit=True,
                              local_infile=True)
 
-def execute(query, arguments=(), get_affected_rowcount=False):
+def create_db_connection():
+    new_conn = pymysql.connect(host='localhost',
+                             user='root',
+                             db=database,
+                             charset='utf8mb4',
+                             cursorclass=pymysql.cursors.DictCursor,
+                             autocommit=True,
+                             local_infile=True)
+    return new_conn
+    
+
+def execute(query, arguments=(), get_affected_rowcount=False, connection=global_conn):
+    if not connection: #if no connection has been passed
+        connection = global_conn
     with connection.cursor() as cursor:
         cursor.execute(query, arguments)
         results = cursor.fetchall()
@@ -27,7 +40,7 @@ def execute(query, arguments=(), get_affected_rowcount=False):
     return results
 
 
-def pd_read_sql(query):
+def pd_read_sql(query, connection=global_conn):
     return pd.read_sql(query,connection)
 
 def load_df(table,df):

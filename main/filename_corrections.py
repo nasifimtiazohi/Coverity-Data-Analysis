@@ -10,6 +10,11 @@ For new project, we manually build this rules by exploration
 and by means achieve 100% accuracy.
 '''
 
+'''
+Need to change logic when filepath and project_id is set as unique in
+file table. Cannot update but only remove. 
+'''
+
 import common, sql 
 import sys, logging
 
