@@ -245,7 +245,7 @@ def add_commits_and_filecommits(projectId, fileId, commits, connection=None):
                 add_commit(commit, projectId, connection=connection)
                 newcommit+=1
             except sql.pymysql.IntegrityError as error:
-                if 'Duplicate' in error:
+                if 'Duplicate' in error.message:
                     logging.info('commit already inserted by another process')
                     #safely continue
                 else:
@@ -261,7 +261,7 @@ def add_commits_and_filecommits(projectId, fileId, commits, connection=None):
                 add_filecommits(fileId,commit_id,commit, connection=connection)
                 newfilecommit+=1
             except sql.pymysql.IntegrityError as error:
-                if 'Duplicate' in error:
+                if 'Duplicate' in error.message:
                     logging.info('filecommit already inserted by another process')
                     #safely continue
                 else:

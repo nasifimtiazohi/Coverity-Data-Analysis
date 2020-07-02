@@ -56,9 +56,9 @@ def get_start_end_date(projectId, connection = None):
 
     return start, end
 
-def get_repo_name(projectId):
+def get_repo_name(projectId, connection = None):
     q='select github_url from project where id=%s'
-    results=sql.execute(q,(projectId,))
+    results=sql.execute(q,(projectId,), connection=connection)
     gh_url =  results[0]['github_url']
     #take the last part
     return gh_url.split('/')[-1]
@@ -80,7 +80,7 @@ def get_snapshot_date(projectId, snapshotId, connection=None):
         logging.error('invalid arguments while finding snapshot date')
 
 def get_next_snapshotId(projectId, snapshotId, connection = None):
-    q='''select * from snapshot
+    q='''select id from snapshot
         where project_id=%s
         and last_snapshot=%s'''
     results=sql.execute(q,(projectId, snapshotId), connection=connection)
@@ -88,7 +88,7 @@ def get_next_snapshotId(projectId, snapshotId, connection = None):
         try:
             return results[0]['id']
         except Exception as e:
-            raise Exception(e,snapshotId,projectId)
+            raise Exception(e,snapshotId,projectId, results)
     else:
         raise Exception(e,snapshotId,projectId)
         logging.error('invalid arguments while finding snapshot date',snapshotId)
@@ -102,8 +102,8 @@ def get_alert_count(projectId):
     q='select count(*) as c from alert where project_id=%s'
     return sql.execute(q,(projectId,))[0]['c']
 
-def switch_dir_to_project_path(projectId):
-    path="/Users/nasifimtiaz/Desktop/repos_coverity/" + get_repo_name(projectId)
+def switch_dir_to_project_path(projectId, connection=None):
+    path="/Users/nasifimtiaz/Desktop/repos_coverity/" + get_repo_name(projectId, connection=connection)
     os.chdir(path)
 
 def get_file_id(filename, projectId,connection=None):

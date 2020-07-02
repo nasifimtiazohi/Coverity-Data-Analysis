@@ -36,7 +36,7 @@ def get_merged_date(projectId, id, sha, connection=None):
     query = 'select * from commit where id=%s'
     commit = sql.execute(query, (id,), connection=connection)[0]
 
-    common.switch_dir_to_project_path(projectId)
+    common.switch_dir_to_project_path(projectId,connection=connection)
     # when-merged tool by default checks for master branch
     # https://github.com/mhagger/git-when-merged
     lines = subprocess.check_output(
@@ -66,7 +66,7 @@ def get_merged_date(projectId, id, sha, connection=None):
     try:
         sql.execute(q, (id, date), connection=connection)
     except sql.pymysql.IntegrityError as error:
-        if 'Duplicate' in error:
+        if 'Duplicate' in error.message:
             logging.info('merge_date already inserted by another process')
             #safely continue
         else:
@@ -239,7 +239,9 @@ def process_alert(alert):
     last_detected_date = last_detected_date.replace(
         hour=0, minute=0, second=0)
     first_not_detected_anymore_date = common.get_snapshot_date(
-        projectId, common.get_next_snapshotId(projectId, alert['last_snapshot_id']),connection=conn)
+        projectId, 
+        common.get_next_snapshotId(projectId, alert['last_snapshot_id'], connection=conn),
+        connection=conn)
     first_not_detected_anymore_date = first_not_detected_anymore_date.replace(
         hour=23, minute=59, second=59)
 
