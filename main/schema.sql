@@ -13,11 +13,32 @@ create table alert_type
 )
     charset = utf8;
 
+create table file
+(
+    id                   int auto_increment
+        primary key,
+    project_id           int          not null,
+    filepath_on_coverity varchar(512) null comment 'begins with /',
+    is_processed         tinyint      null,
+    constraint file_pk
+        unique (filepath_on_coverity)
+)
+    charset = utf8;
+
 create table invalid_alert_category
 (
     id       tinyint      not null
         primary key,
     category varchar(255) not null
+);
+
+create table memory_error
+(
+    alert_type_id int        not null
+        primary key,
+    memory        tinyint(1) null,
+    constraint memory_error_alert_type_id_fk
+        foreign key (alert_type_id) references alert_type (id)
 );
 
 create table project
@@ -32,48 +53,6 @@ create table project
     end_date   datetime     null,
     constraint unique_stream
         unique (name, branch)
-)
-    charset = utf8;
-
-create table commit
-(
-    id                   int auto_increment
-        primary key,
-    project_id           int           not null,
-    sha                  varchar(255)  null,
-    author               varchar(4095) null,
-    author_email         varchar(4095) null,
-    author_date          datetime      null,
-    committer            varchar(4095) null,
-    committer_email      varchar(4095) null,
-    commit_date          datetime      null,
-    message              longtext      null,
-    affected_files_count int           null,
-    net_lines_added      int           null,
-    net_lines_removed    int           null,
-    is_merged            varchar(255)  null,
-    constraint commit_pk
-        unique (sha, project_id),
-    constraint sha
-        unique (sha),
-    constraint commit_project_id_fk
-        foreign key (project_id) references project (id)
-            on update cascade
-)
-    charset = utf8;
-
-create table file
-(
-    id                   int auto_increment
-        primary key,
-    project_id           int          not null,
-    filepath_on_coverity varchar(512) null comment 'begins with /',
-    is_processed         tinyint      null,
-    constraint file_pk
-        unique (project_id, filepath_on_coverity),
-    constraint file_project_id_fk
-        foreign key (project_id) references project (id)
-            on update cascade
 )
     charset = utf8;
 
@@ -124,6 +103,33 @@ create table alert
 )
     charset = utf8;
 
+create table commit
+(
+    id                   int auto_increment
+        primary key,
+    project_id           int           not null,
+    sha                  varchar(255)  null,
+    author               varchar(4095) null,
+    author_email         varchar(4095) null,
+    author_date          datetime      null,
+    committer            varchar(4095) null,
+    committer_email      varchar(4095) null,
+    commit_date          datetime      null,
+    message              longtext      null,
+    affected_files_count int           null,
+    net_lines_added      int           null,
+    net_lines_removed    int           null,
+    is_merged            varchar(255)  null,
+    constraint commit_pk
+        unique (sha, project_id),
+    constraint sha
+        unique (sha),
+    constraint commit_project_id_fk
+        foreign key (project_id) references project (id)
+            on update cascade
+)
+    charset = utf8;
+
 create table actionability
 (
     alert_id                 int         not null
@@ -153,8 +159,8 @@ create table filecommit
 (
     id            int auto_increment
         primary key,
-    file_id       int          null,
-    commit_id     int          null,
+    file_id       int          not null,
+    commit_id     int          not null,
     change_type   varchar(255) null comment 'how the file is changed',
     lines_added   int          null,
     lines_removed int          null,
@@ -177,9 +183,8 @@ create table diff
     new_start_line int      null,
     new_count      int      null,
     content        longtext null,
-    constraint diff_filecommits_idfilecommits_fk
+    constraint diff_filecommit_id_fk
         foreign key (filecommit_id) references filecommit (id)
-            on update cascade
 )
     charset = utf8;
 
@@ -231,6 +236,18 @@ create table occurrence
             on update cascade
 )
     charset = utf8;
+
+create table product_info
+(
+    project_id int          not null
+        primary key,
+    vendor     varchar(255) null,
+    product    varchar(255) null,
+    type       varchar(45)  null,
+    constraint product_info_project_id_fk
+        foreign key (project_id) references project (id)
+            on update cascade
+);
 
 create table snapshot
 (
