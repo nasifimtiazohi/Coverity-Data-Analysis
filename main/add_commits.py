@@ -241,8 +241,15 @@ def add_commits_and_filecommits(projectId, fileId, commits, connection=None):
         sha=commit["hash"]
         if not commitId_exists(projectId, sha, connection=connection):
             #not adding affected files count, lines added, and removed for now in this script
-            newcommit+=1
-            add_commit(commit, projectId, connection=connection) 
+            try:
+                add_commit(commit, projectId, connection=connection)
+                newcommit+=1
+            except sql.pymysql.IntegrityError as error:
+                if 'Duplicate' in error:
+                    logging.info('commit already inserted by another process')
+                    #safely continue
+                else:
+                    exit()
         commit_id=commitId_exists(projectId, sha, connection=connection)  
         
         if not commit_id:
@@ -250,8 +257,15 @@ def add_commits_and_filecommits(projectId, fileId, commits, connection=None):
             exit() 
         
         if not filecommitId_exists(fileId,commit_id, connection=connection):
-            newfilecommit+=1
-            add_filecommits(fileId,commit_id,commit, connection=connection)
+            try:
+                add_filecommits(fileId,commit_id,commit, connection=connection)
+                newfilecommit+=1
+            except sql.pymysql.IntegrityError as error:
+                if 'Duplicate' in error:
+                    logging.info('filecommit already inserted by another process')
+                    #safely continue
+                else:
+                    exit()
         filecommit_id = filecommitId_exists(fileId,commit_id, connection=connection)
 
     if commits:
@@ -262,8 +276,9 @@ def add_commits_and_filecommits(projectId, fileId, commits, connection=None):
     
     return newcommit,newfilecommit
 
-def mine_file(file, projectId):
+def mine_file(file):
     conn=sql.create_db_connection()
+    projectId=file['project_id']
     fileId=file["id"]
     path=file["filepath_on_coverity"]
     path=path[1:] #cut the beginning slash
@@ -279,11 +294,11 @@ def mine_commits(projectId):
     
     # get all the files from database
     files=get_all_files(projectId)
-
     logging.info("%s files to be mined",len(files))
+    
+    for file in files:
+        file['project_id']=projectId
 
-    # for file in files:
-    #     mine_file(file,projectId)
     pool = Pool(os.cpu_count())
     pool.map(mine_file, files)
 

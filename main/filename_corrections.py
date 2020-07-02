@@ -46,7 +46,7 @@ def get_duplicates(projectId,files):
     q='select name from project where id=%s'
     project=sql.execute(q,(projectId,))[0]['name']
     if project not in hm:
-        return 0
+        return {}
     
     checks=hm[project]
     duplicates={}
@@ -67,7 +67,7 @@ def get_duplicates(projectId,files):
 
 
 def remove_duplicates(duplicates):
-    logging.info("%s files have duplicates",len(duplicates))
+    logging.info("%s files have duplicates",len(duplicates.keys()))
     
     corrected=0
     for main_id in duplicates.keys():
@@ -93,7 +93,11 @@ def resolve_duplicates(projectId):
     files=get_all_files(projectId)
 
     duplicates= get_duplicates(projectId,files)
-
+    
+    if not duplicates:
+        logging.info("no duplicates")
+        return
+    
     corrected = remove_duplicates( duplicates)
 
     logging.info("%s files have been corrected", corrected)

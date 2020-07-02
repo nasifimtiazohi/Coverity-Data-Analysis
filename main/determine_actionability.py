@@ -69,6 +69,8 @@ def get_merged_date(projectId, id, sha, connection=None):
         if 'Duplicate' in error:
             logging.info('merge_date already inserted by another process')
             #safely continue
+        else:
+            exit()
     return sql.execute(getMergeDateQuery, (id,), connection=connection)[0]['merge_date']
 
 
