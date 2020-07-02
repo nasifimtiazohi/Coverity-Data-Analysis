@@ -10,11 +10,6 @@ For new project, we manually build this rules by exploration
 and by means achieve 100% accuracy.
 '''
 
-'''
-Need to change logic when filepath and project_id is set as unique in
-file table. Cannot update but only remove. 
-'''
-
 import common, sql 
 import sys, logging
 
@@ -47,52 +42,36 @@ def startswithAny(s, checks):
             return check
     return False
 
-def correction(project,files):
+def get_duplicates(projectId,files):
+    q='select name from project where id=%s'
+    project=sql.execute(q,(projectId,))[0]['name']
     if project not in hm:
         return 0
+    
     checks=hm[project]
-    correctedCount=0
+    duplicates={}
+    
     for item in files:
         filename=item['filepath_on_coverity']
         cut = startswithAny(filename, checks)
         if cut:
-            corrected=filename[len(cut):]
+            corrected=filename[len(cut):]                                                          
             fileId=item['id']
-            q='update file set filepath_on_coverity=%s where id=%s'
-            sql.execute(q,(corrected,fileId))
-            correctedCount+=1
-    return correctedCount
+            mainId=common.get_file_id(corrected,projectId)
+            if mainId not in duplicates:
+                duplicates[mainId]=[fileId]
+            else:
+                duplicates[mainId].append(fileId)
+                
+    return duplicates
 
 
-def remove_duplicates(projectId):
-    q='''select filepath_on_coverity, count(*) as c
-            from file
-            where project_id = %s
-            group by filepath_on_coverity
-            having count(*) > 1'''
-    results=sql.execute(q,(projectId,))
-
-    logging.info("%s files have duplicates",len(results))
-
-    for item in results:
-        filepath=item['filepath_on_coverity']
-        q='''select id from file
-            where filepath_on_coverity=%s
-            order by id asc '''
-        temp=sql.execute(q,(filepath,))
-        ids=[t['id'] for t in temp]
-        
-        max=-1
-        main_id=-1
-        for id in ids:
-            q='select count(*) as c from filecommit where file_id=%s'
-            c=sql.execute(q,(id,))[0]['c']
-            if c>max:
-                max=c
-                main_id=id
-        
-        
-        ids.remove(main_id)
+def remove_duplicates(duplicates):
+    logging.info("%s files have duplicates",len(duplicates))
+    
+    corrected=0
+    for main_id in duplicates.keys():
+        ids=duplicates[main_id]
 
         for replace_id in ids:
             #update alerts
@@ -106,22 +85,59 @@ def remove_duplicates(projectId):
             #delete from files
             q='delete from file where id=%s'
             sql.execute(q,(replace_id,))
-        
+
+            corrected+=1
+            
+    return corrected
 def resolve_duplicates(projectId):
     files=get_all_files(projectId)
 
-    q='select name from project where id=%s'
-    project=sql.execute(q,(projectId,))[0]['name']
+    duplicates= get_duplicates(projectId,files)
 
-    correctedCount= correction(project,files)
-    logging.info("%s files names have been corrected",correctedCount)
+    corrected = remove_duplicates( duplicates)
 
-    remove_duplicates(projectId)
+    logging.info("%s files have been corrected", corrected)
+ 
+ 
+def fix_duplicate_externals():
+    q='''select filepath_on_coverity, count(*) as c
+        from file
+        group by filepath_on_coverity
+        having count(*)>1  '''
+    results=sql.execute(q)
+    corrected=0
+    for item in results:
+        filename = item['filepath_on_coverity']
+        q='select id from file where filepath_on_coverity=%s'
+        ids=sql.execute(q,(filename,))
+        main_id = ids[0]['id']
+        ids=ids[1:]
+        for replace_id in ids:
+            replace_id=replace_id['id']
+            #update alerts
+            q='update alert set file_id=%s where file_id=%s'
+            sql.execute(q,(main_id, replace_id))
 
+            # #update occurrences
+            # query="update occurrence set file_id="+str(main_id)+" where file_id="+str(replace_id)
+            # execute(query)
+
+            #delete from files
+            q='delete from file where id=%s'
+            sql.execute(q,(replace_id,))
+
+            corrected+=1
+    logging.info("%s external files corrected",corrected)
+        
+   
+   
 if __name__=='__main__':
+    fix_duplicate_externals()
     #read the project name
-    project=sys.argv[1]
-    projectId=common.get_project_id(project)
+    # project=sys.argv[1]
+    # projectId=common.get_project_id(project)
+    
+    # print(get_base_names(get_all_files(projectId)))
 
-    resolve_duplicates(projectId)
+    # resolve_duplicates(projectId)
 

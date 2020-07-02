@@ -72,14 +72,14 @@ def get_all_files(projectId, start=None, end=None):
     
     return results
 
-def commitId_exists(projectId, sha):
+def commitId_exists(projectId, sha, connection=None):
     q='select id from commit where project_id=%s and sha=%s'
-    results=sql.execute(q,(projectId,sha))
+    results=sql.execute(q,(projectId,sha), connection=connection)
     if results:
         return results[0]['id']
     return None
 
-def add_commit(commit, projectId):
+def add_commit(commit, projectId, connection=None):
     arguments=[
         None, projectId,
         commit["hash"],commit["author"],commit["author_email"],
@@ -97,26 +97,26 @@ def add_commit(commit, projectId):
     
     q='insert into commit values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'
     #print("new commit being added")
-    sql.execute(q,tuple(arguments))
+    sql.execute(q,tuple(arguments), connection=connection)
 
-def filecommitId_exists(file_id,commit_id):
+def filecommitId_exists(file_id,commit_id, connection=None):
     if not file_id or not commit_id:
         logging.error("look in filecommitId_ifExists method",file_id,commit_id)
         return 
     q='select id from filecommit where file_id=%s and commit_id=%s'
-    results=sql.execute(q,(file_id,commit_id))
+    results=sql.execute(q,(file_id,commit_id), connection=connection)
     if results:
         return results[0]['id']
     return None
 
-def add_filecommits(file_id, commit_id, commit):
+def add_filecommits(file_id, commit_id, commit, connection=None):
     arguments=[
         None, file_id, commit_id,
         commit['change_type'],commit['lines_added'],commit['lines_removed']
     ]
     q='insert into filecommit values(%s,%s,%s,%s,%s,%s)'
     #print("new filecommit being added")
-    sql.execute(q,tuple(arguments))
+    sql.execute(q,tuple(arguments), connection=connection)
 
 def process_commits(lines):
     commits=[]
@@ -193,19 +193,20 @@ def process_commits(lines):
         commits.append(commit) 
     return commits
 
-def mine_gitlog(projectId, fileId, filepath):
+def mine_gitlog(projectId, fileId, filepath, connection=None):
     def set_start_end_date():
         '''
         determine start and end date range to search commit within
         returns as string
         '''
-        start_date, end_date=common.get_start_end_date(projectId)
+        nonlocal connection
+        start_date, end_date=common.get_start_end_date(projectId, connection=connection)
         ## overwrite start date if there is already any filecommit present in the database
         ## (which means the file was analyzed at least upto that point before)
         q='''select max(commit_date) as lastdate from filecommit fc
             join commit c on fc.commit_id = c.id
             where file_id=%s  '''
-        results=sql.execute(q,(fileId,))
+        results=sql.execute(q,(fileId,), connection=connection)
         if results and results[0]['lastdate']:
             start_date=results[0]['lastdate']
             start_date=start_date
@@ -219,8 +220,6 @@ def mine_gitlog(projectId, fileId, filepath):
         end_date=end_date.strftime('%Y-%m-%d')
         return start_date, end_date
     start_date, end_date = set_start_end_date()
-    #print(start_date,end_date)
-
     try:
         lines = subprocess.check_output(
             shlex.split('git log --follow --pretty=fuller --stat \
@@ -235,42 +234,43 @@ def mine_gitlog(projectId, fileId, filepath):
 
     return process_commits(lines)
     
-def add_commits_and_filecommits(projectId, fileId, commits):
+def add_commits_and_filecommits(projectId, fileId, commits, connection=None):
     newcommit=0
     newfilecommit=0
     for commit in commits:
         sha=commit["hash"]
-        if not commitId_exists(projectId, sha):
+        if not commitId_exists(projectId, sha, connection=connection):
             #not adding affected files count, lines added, and removed for now in this script
             newcommit+=1
-            add_commit(commit, projectId) 
-        commit_id=commitId_exists(projectId, sha)  
+            add_commit(commit, projectId, connection=connection) 
+        commit_id=commitId_exists(projectId, sha, connection=connection)  
         
         if not commit_id:
-            print(sha)
+            logging.error("null commit. problem in paralellizing. sha=%s",sha)
             exit() 
         
-        if not filecommitId_exists(fileId,commit_id):
+        if not filecommitId_exists(fileId,commit_id, connection=connection):
             newfilecommit+=1
-            add_filecommits(fileId,commit_id,commit)
-        filecommit_id = filecommitId_exists(fileId,commit_id)
+            add_filecommits(fileId,commit_id,commit, connection=connection)
+        filecommit_id = filecommitId_exists(fileId,commit_id, connection=connection)
 
     if commits:
         #if we found any commit, then make is_processed to 1
         #otherwise, go to detect external file script
         q='update file set is_processed=1 where id=%s'
-        sql.execute(q,(fileId,))
+        sql.execute(q,(fileId,), connection=connection)
     
     return newcommit,newfilecommit
 
 def mine_file(file, projectId):
+    conn=sql.create_db_connection()
     fileId=file["id"]
     path=file["filepath_on_coverity"]
     path=path[1:] #cut the beginning slash
 
-    commits=mine_gitlog(projectId, fileId, path)
+    commits=mine_gitlog(projectId, fileId, path, connection=conn)
     
-    newcommit, newfilecommit = add_commits_and_filecommits(projectId,fileId,commits)
+    newcommit, newfilecommit = add_commits_and_filecommits(projectId,fileId,commits, connection=conn)
     logging.info("new %s commits and %s filecommits added for %s",newcommit,newfilecommit,path)
 
 def mine_commits(projectId):
@@ -282,10 +282,10 @@ def mine_commits(projectId):
 
     logging.info("%s files to be mined",len(files))
 
-    for file in files:
-        mine_file(file,projectId)
-    # pool = Pool(os.cpu_count())
-    # pool.map(mine_file, files)
+    # for file in files:
+    #     mine_file(file,projectId)
+    pool = Pool(os.cpu_count())
+    pool.map(mine_file, files)
 
         
  

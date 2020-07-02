@@ -70,14 +70,17 @@ if __name__=='__main__':
         ## before start date
         invalidate_alerts_before_start_date(projectId)
         ## outlier spikes
-        suspects = identify_outlier_spikes(projecId)
+        suspects = identify_outlier_spikes(projectId)
         if suspects:
             print(suspects)
-            exit()
-            #manually inspect here
+        print(fc.get_base_names(fc.get_all_files(projectId)))
+        #manually inspect here, outliers and filenames
+        exit()
+        
     
-    aps.add_snapshots(snapshotFile)
-    aa.add_n_update_alerts(projectId, alertFile)
+    
+    # aps.add_snapshots(snapshotFile)
+    # aa.add_n_update_alerts(projectId, alertFile)
     fc.resolve_duplicates(projectId)
     ac.mine_commits(projectId)
     ef.handle_external_files(projectId) #invalidates external file alerts

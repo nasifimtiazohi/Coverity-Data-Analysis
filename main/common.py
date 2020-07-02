@@ -41,12 +41,12 @@ def replace_blankString_with_NaN(df):
     return df.replace(r'^\s*$', np.NaN, regex=True)
 
 
-def get_start_end_date(projectId):
+def get_start_end_date(projectId, connection = None):
     '''returns as dateformat '''
     d={}
 
     q="select start_date, end_date from project where id=%s"
-    results=sql.execute(q,(projectId,))
+    results=sql.execute(q,(projectId,),connection=connection)
     if not results:
         return d
     result=results[0]
