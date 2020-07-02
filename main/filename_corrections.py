@@ -33,7 +33,8 @@ a=[]
 hm={'Samba':['/samba','/bin/default','/base/src'],
     'Kodi':['/home/jenkins/workspace/LINUX-64-soverityscan_sandbox'],
     'Linux':['/linux'],
-    'Firefox':['/mozilla','/base/src/mozilla']
+    'Firefox':['/mozilla','/base/src/mozilla'],
+    'Chromium EC':['/build/krane','/build/kukui']
     }
 
 def startswithAny(s, checks):

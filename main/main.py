@@ -11,7 +11,9 @@ import patch_complexity as pc
 add_new_project_queries={
     #initiate Chaos control framework
     '!CHAOS Control System' : '''insert into project values(null,'!CHAOS Control System','https://github.com/bisegni/chaosframework.git',
-    'https://github.com/bisegni/chaosframework.git','master',null,null)'''
+    'https://github.com/bisegni/chaosframework.git','master',null,null)''',
+    'Chromium EC': '''insert into project values(null,'Chromium EC','https://chromium.googlesource.com/chromiumos/platform/ec',
+    'https://chromium.googlesource.com/chromiumos/platform/ec','master',null,null)'''
 }
 
 def read_cl_args():
@@ -76,11 +78,9 @@ if __name__=='__main__':
         print(fc.get_base_names(fc.get_all_files(projectId)))
         #manually inspect here, outliers and filenames
         exit()
-        
     
-    
-    # aps.add_snapshots(snapshotFile)
-    # aa.add_n_update_alerts(projectId, alertFile)
+    aps.add_snapshots(snapshotFile)
+    aa.add_n_update_alerts(projectId, alertFile)
     fc.resolve_duplicates(projectId)
     ac.mine_commits(projectId)
     ef.handle_external_files(projectId) #invalidates external file alerts

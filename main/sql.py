@@ -9,6 +9,8 @@ database='coverityscanV2'
 import sqlalchemy as db
 engine = db.create_engine('mysql+pymysql://root:@localhost:3306/{}'.format(database))
 
+PYMYSQL_DUPLICATE_ERROR = 1062
+
 global_conn = pymysql.connect(host='localhost',
                              user='root',
                              db=database,
@@ -119,8 +121,14 @@ def get_table_columns(table):
 def convert_datetime_to_sql_format(s):
     return datetime.datetime.strptime(s,'%m/%d/%y').strftime('%y/%m/%d')
 
+def test_pymysql_error():
+    q='''insert into project values(null,'!CHAOS Control System','https://github.com/bisegni/chaosframework.git',
+    'https://github.com/bisegni/chaosframework.git','master',null,null)'''
+    try:
+        execute(q)
+    except pymysql.IntegrityError as e:
+        print(type(e))
+        print(e.args)
+
 if __name__=='__main__':
-    q='update invalid_alert_category set id=0 where category="valid"'
-    with connection.cursor() as cursor:
-        cursor.execute(q)
-        print(cursor.rowcount)
+    test_pymysql_error()

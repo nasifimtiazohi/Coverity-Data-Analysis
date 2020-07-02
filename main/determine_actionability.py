@@ -66,7 +66,7 @@ def get_merged_date(projectId, id, sha, connection=None):
     try:
         sql.execute(q, (id, date), connection=connection)
     except sql.pymysql.IntegrityError as error:
-        if 'Duplicate' in error.message:
+        if error.args[0] == sql.PYMYSQL_DUPLICATE_ERROR:
             logging.info('merge_date already inserted by another process')
             #safely continue
         else:
