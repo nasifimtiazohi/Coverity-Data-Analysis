@@ -67,7 +67,7 @@ def trim_old_data(datalist):
     results=sql.execute(q,(stream,))
     
     if not results:
-        return  datalist, 'null'
+        return  datalist, None
     
     lastSnapshotDateInDb = results[0]['date']
     lastSnapshotId = results[0]['id']
