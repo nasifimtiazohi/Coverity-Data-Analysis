@@ -34,7 +34,9 @@ hm={'Samba':['/samba','/bin/default','/base/src'],
     'Kodi':['/home/jenkins/workspace/LINUX-64-soverityscan_sandbox'],
     'Linux':['/linux'],
     'Firefox':['/mozilla','/base/src/mozilla'],
-    'Chromium EC':['/build/krane','/build/kukui']
+    'Chromium EC':['/build/krane','/build/kukui'],
+    'OpenCV':['/home/build/opencv','/home/opencv/opencv_src','/home/vrabaud/software/opencv',
+              '/home/vrabaud/software/opencv_trunk','/java_test/src/org/opencv','/src/org/opencv']
     }
 
 def startswithAny(s, checks):
@@ -90,7 +92,7 @@ def remove_duplicates(duplicates):
             corrected+=1
             
     return corrected
-def resolve_duplicates(projectId):
+def resolve_filename_prefixes(projectId):
     files=get_all_files(projectId)
 
     duplicates= get_duplicates(projectId,files)
@@ -103,46 +105,12 @@ def resolve_duplicates(projectId):
 
     logging.info("%s files have been corrected", corrected)
  
- 
-def fix_duplicate_externals():
-    q='''select filepath_on_coverity, count(*) as c
-        from file
-        group by filepath_on_coverity
-        having count(*)>1  '''
-    results=sql.execute(q)
-    corrected=0
-    for item in results:
-        filename = item['filepath_on_coverity']
-        q='select id from file where filepath_on_coverity=%s'
-        ids=sql.execute(q,(filename,))
-        main_id = ids[0]['id']
-        ids=ids[1:]
-        for replace_id in ids:
-            replace_id=replace_id['id']
-            #update alerts
-            q='update alert set file_id=%s where file_id=%s'
-            sql.execute(q,(main_id, replace_id))
-
-            # #update occurrences
-            # query="update occurrence set file_id="+str(main_id)+" where file_id="+str(replace_id)
-            # execute(query)
-
-            #delete from files
-            q='delete from file where id=%s'
-            sql.execute(q,(replace_id,))
-
-            corrected+=1
-    logging.info("%s external files corrected",corrected)
-        
    
    
 if __name__=='__main__':
-    fix_duplicate_externals()
     #read the project name
-    # project=sys.argv[1]
-    # projectId=common.get_project_id(project)
+    project=sys.argv[1]
+    projectId=common.get_project_id(project)
     
-    # print(get_base_names(get_all_files(projectId)))
-
-    # resolve_duplicates(projectId)
+    print(get_base_names(get_all_files(projectId)))
 

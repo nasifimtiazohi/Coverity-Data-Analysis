@@ -13,7 +13,11 @@ add_new_project_queries={
     '!CHAOS Control System' : '''insert into project values(null,'!CHAOS Control System','https://github.com/bisegni/chaosframework.git',
     'https://github.com/bisegni/chaosframework.git','master',null,null)''',
     'Chromium EC': '''insert into project values(null,'Chromium EC','https://chromium.googlesource.com/chromiumos/platform/ec',
-    'https://chromium.googlesource.com/chromiumos/platform/ec','master',null,null)'''
+    'https://chromium.googlesource.com/chromiumos/platform/ec','master',null,null)''',
+    'OpenCV':'''insert into project values(null,'OpenCV','https://github.com/opencv/opencv',
+    'https://github.com/opencv/opencv','master',null,null)''',
+    'LibreOffice':'''insert into project values(null,'LibreOffice','https://cgit.freedesktop.org/libreoffice/core',
+    'https://cgit.freedesktop.org/libreoffice/core','master',null,null)'''
 }
 
 def read_cl_args():
@@ -56,10 +60,22 @@ def identify_outlier_spikes(projectId):
         i+=1
     return results[:i]
 
+def initial_cleaning():
+    #do initial data cleaning
+    ## before start date
+    invalidate_alerts_before_start_date(projectId)
+    ## outlier spikes
+    suspects = identify_outlier_spikes(projectId)
+    if suspects:
+        print(suspects)
+    print(fc.get_base_names(fc.get_all_files(projectId)))
+    #manually inspect here, outliers and filenames
+    exit()
+
 if __name__=='__main__':
     project, snapshotFile, alertFile = read_cl_args()
     projectId=common.get_project_id(project)
-
+    
     if not projectId:
         #new project found
         #insert project
@@ -81,10 +97,10 @@ if __name__=='__main__':
     
     aps.add_snapshots(snapshotFile)
     aa.add_n_update_alerts(projectId, alertFile)
-    fc.resolve_duplicates(projectId)
-    ac.mine_commits(projectId)
-    ef.handle_external_files(projectId) #invalidates external file alerts
-    act.analyze_actionability(projectId) #invalidate file renames/deletes
-    pc.update_fix_complexity(projectId)
+    # fc.resolve_filename_prefixes(projectId)
+    # ac.mine_commits(projectId)
+    # ef.handle_external_files(projectId) #invalidates external file alerts
+    # act.analyze_actionability(projectId) #invalidate file renames/deletes
+    # pc.update_fix_complexity(projectId)
 
     
