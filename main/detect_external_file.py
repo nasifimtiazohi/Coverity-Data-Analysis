@@ -14,6 +14,7 @@ import re
 import shlex
 import dateutil.parser as dp
 import add_commits as ac
+from multiprocessing import Pool
 
 def get_potential_files(projectId):
     q='''select *
@@ -27,27 +28,34 @@ def get_potential_files(projectId):
     return sql.execute(q,(projectId,))
 
 
+def process_file(file):
+    conn=sql.create_db_connection()
+    filepath=file['filepath_on_coverity'][1:]
+    fileId=file['id']
+    projectId=file['project_id']
+    #search for only one commit
+    lines = subprocess.check_output(
+            shlex.split('git log --follow --pretty=fuller --stat -n 1 \
+            -- '+filepath), 
+            stderr=subprocess.STDOUT,
+            encoding="437"
+            ).split('\n')
+    count=len(lines)-1
+    if count==0:
+        q='update file set is_processed=1 where id=%s'
+        sql.execute(q,(fileId,),connection=conn)
+        logging.info("external file found: %s, file_id:%s", filepath, fileId)
+    else:
+        commits=ac.process_commits(lines)
+        ac.add_commits_and_filecommits(projectId,fileId,commits, connection=conn)
 
 def detect_external_file_and_put_one_commit_to_db_for_internals(projectId):
     files= get_potential_files(projectId)
-    for item in files:
-        filepath=item['filepath_on_coverity'][1:]
-        fileId=item['id']
-        #search for only one commit
-        lines = subprocess.check_output(
-                shlex.split('git log --follow --pretty=fuller --stat -n 1 \
-                -- '+filepath), 
-                stderr=subprocess.STDOUT,
-                encoding="437"
-                ).split('\n')
-        count=len(lines)-1
-        if count==0:
-            q='update file set is_processed=1 where id=%s'
-            sql.execute(q,(fileId,))
-            logging.info("external file found: %s", filepath)
-        else:
-            commits=ac.process_commits(lines)
-            ac.add_commits_and_filecommits(projectId,fileId,commits)
+    logging.info("%s files to mined",len(files))
+    for file in files:
+        file['project_id']=projectId
+    pool=Pool(os.cpu_count())
+    pool.map(process_file,files)
 
 def invalidate_external_file_alerts(projectId):
     q='''update alert

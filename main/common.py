@@ -110,6 +110,9 @@ def get_file_id(filename, projectId,connection=None):
     selectQ='select id from file where filepath_on_coverity =%s and project_id=%s '
     results=sql.execute(selectQ,(filename, projectId), connection=connection)
     if not results:
+        #check if filename startswith /
+        if not filename.startswith('/'):
+            filename = '/'+ filename
         insertQ='insert into file values(null,%s,%s,null)'
         sql.execute(insertQ,(projectId, filename), connection=connection)
         results=sql.execute(selectQ,(filename, projectId), connection=connection)

@@ -1,5 +1,5 @@
 import common, sql
-import os, sys
+import os, sys, time
 import add_project_snapshots as aps
 import add_alerts as aa
 import filename_corrections as fc
@@ -17,7 +17,11 @@ add_new_project_queries={
     'OpenCV':'''insert into project values(null,'OpenCV','https://github.com/opencv/opencv',
     'https://github.com/opencv/opencv','master',null,null)''',
     'LibreOffice':'''insert into project values(null,'LibreOffice','https://cgit.freedesktop.org/libreoffice/core',
-    'https://cgit.freedesktop.org/libreoffice/core','master',null,null)'''
+    'https://cgit.freedesktop.org/libreoffice/core','master',null,null)''',
+    'Thunderbird':'''insert into project values(null,'Thunderbird','http://hg.mozilla.org/comm-central/',
+    'https://github.com/mozilla/releases-comm-central','master',null,null)''',
+    'VTK':'''insert into project values(null,'VTK','https://gitlab.kitware.com/vtk/vtk.git',
+    'https://gitlab.kitware.com/vtk/vtk.git','master',null,null)'''
 }
 
 def read_cl_args():
@@ -45,7 +49,7 @@ def invalidate_alerts_before_start_date(projectId):
     sql.execute(q,(projectId,projectId))
 
 def identify_outlier_spikes(projectId):
-    threshold=200
+    threshold=1000
     q='''select project_id, type, first_detected, last_snapshot_id, count(*) as c
         from alert a
         join alert_type t on a.alert_type_id = t.id
@@ -57,6 +61,7 @@ def identify_outlier_spikes(projectId):
     while i<len(results):
         if results[i]['c'] < threshold:
             break
+        
         i+=1
     return results[:i]
 
@@ -71,6 +76,12 @@ def initial_cleaning():
     print(fc.get_base_names(fc.get_all_files(projectId)))
     #manually inspect here, outliers and filenames
     exit()
+
+def git_pull(projectId):
+    common.switch_dir_to_project_path(projectId)
+    os.system('git pull')
+    logging.info("waiting 5 seconds")
+    time.sleep(5)
 
 if __name__=='__main__':
     project, snapshotFile, alertFile = read_cl_args()
@@ -95,12 +106,14 @@ if __name__=='__main__':
         #manually inspect here, outliers and filenames
         exit()
     
+    git_pull(projectId)
     aps.add_snapshots(snapshotFile)
     aa.add_n_update_alerts(projectId, alertFile)
-    # fc.resolve_filename_prefixes(projectId)
-    # ac.mine_commits(projectId)
-    # ef.handle_external_files(projectId) #invalidates external file alerts
-    # act.analyze_actionability(projectId) #invalidate file renames/deletes
-    # pc.update_fix_complexity(projectId)
+    set_start_and_end_date(projectId)
+    fc.resolve_filename_prefixes(projectId)
+    ac.mine_commits(projectId)
+    ef.handle_external_files(projectId) #invalidates external file alerts
+    act.analyze_actionability(projectId) #invalidate file renames/deletes
+    pc.update_fix_complexity(projectId)
 
     

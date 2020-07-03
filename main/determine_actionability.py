@@ -175,6 +175,7 @@ def search_suppression_keywords_in_commit_diffs(projectId, sha, filepath):
     keywords = [
         r'coverity\[.*\]',
         r'/\* fall through \*/',
+        '#if defined(__COVERITY__)',
         '@OverridersMustCall', '@OverridersNeedNotCall',
         '@CheckReturnValue',
         '@GuardedBy',

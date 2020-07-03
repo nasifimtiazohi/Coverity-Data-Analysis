@@ -20,8 +20,8 @@ create table file
     project_id           int          not null,
     filepath_on_coverity varchar(512) null comment 'begins with /',
     is_processed         tinyint      null,
-    constraint file_pk
-        unique (filepath_on_coverity)
+    constraint filepath_pk
+        unique (project_id, filepath_on_coverity)
 )
     charset = utf8;
 
