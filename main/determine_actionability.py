@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import dateutil.parser as dp
 from multiprocessing import Pool
+import datetime
 
 def get_fixed_alerts(projectId):
     '''
@@ -269,6 +270,7 @@ def process_alert(alert):
         for item in potential_commits:
             merge_date = get_merged_date(
                 projectId, item['idcommits'], item['sha'], connection=conn)
+            assert isinstance(merge_date,datetime.datetime)
             item['merge_date'] = merge_date
             if merge_date >= last_detected_date and merge_date <= first_not_detected_anymore_date:
                 merged_commits.append(item)

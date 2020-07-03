@@ -7,21 +7,10 @@ import add_commits as ac
 import detect_external_file as ef
 import determine_actionability as act
 import patch_complexity as pc
+import subprocess, shlex
 
 add_new_project_queries={
-    #initiate Chaos control framework
-    '!CHAOS Control System' : '''insert into project values(null,'!CHAOS Control System','https://github.com/bisegni/chaosframework.git',
-    'https://github.com/bisegni/chaosframework.git','master',null,null)''',
-    'Chromium EC': '''insert into project values(null,'Chromium EC','https://chromium.googlesource.com/chromiumos/platform/ec',
-    'https://chromium.googlesource.com/chromiumos/platform/ec','master',null,null)''',
-    'OpenCV':'''insert into project values(null,'OpenCV','https://github.com/opencv/opencv',
-    'https://github.com/opencv/opencv','master',null,null)''',
-    'LibreOffice':'''insert into project values(null,'LibreOffice','https://cgit.freedesktop.org/libreoffice/core',
-    'https://cgit.freedesktop.org/libreoffice/core','master',null,null)''',
-    'Thunderbird':'''insert into project values(null,'Thunderbird','http://hg.mozilla.org/comm-central/',
-    'https://github.com/mozilla/releases-comm-central','master',null,null)''',
-    'VTK':'''insert into project values(null,'VTK','https://gitlab.kitware.com/vtk/vtk.git',
-    'https://gitlab.kitware.com/vtk/vtk.git','master',null,null)'''
+    #put insert queries for new project here
 }
 
 def read_cl_args():
@@ -79,9 +68,12 @@ def initial_cleaning():
 
 def git_pull(projectId):
     common.switch_dir_to_project_path(projectId)
-    os.system('git pull')
-    logging.info("waiting 5 seconds")
-    time.sleep(5)
+    lines = subprocess.check_output(
+            shlex.split('git pull'), 
+            stderr=subprocess.STDOUT,
+            encoding="437"
+            ).split('\n')
+    print(lines)
 
 if __name__=='__main__':
     project, snapshotFile, alertFile = read_cl_args()
@@ -90,7 +82,10 @@ if __name__=='__main__':
     if not projectId:
         #new project found
         #insert project
+        #TODO ask for project parameters and formulate insert query based on that
         sql.execute(add_new_project_queries[project])
+        
+        
         projectId=common.get_project_id(project)
         aps.add_snapshots(snapshotFile)
         aa.add_n_update_alerts(projectId, alertFile)
@@ -109,7 +104,6 @@ if __name__=='__main__':
     git_pull(projectId)
     aps.add_snapshots(snapshotFile)
     aa.add_n_update_alerts(projectId, alertFile)
-    set_start_and_end_date(projectId)
     fc.resolve_filename_prefixes(projectId)
     ac.mine_commits(projectId)
     ef.handle_external_files(projectId) #invalidates external file alerts
