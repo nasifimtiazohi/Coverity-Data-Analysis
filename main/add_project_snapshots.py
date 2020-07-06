@@ -33,8 +33,9 @@ def read_data(datafile):
     '''Returns snapshot data from oldest to newest '''
     datalist = common.read_xml_file_to_list_of_dicts(datafile)
 
-    #turn into oldest to newest as the file reads from newet to oldest
-    datalist.reverse()
+    #turn into oldest to newest
+    datalist = sorted(datalist,key=lambda k:k['snapshotDate'])
+    
     
     return datalist
 
@@ -134,7 +135,7 @@ if __name__=='__main__':
     except:
         logging.error("no input data provided as cli argument")
 
-    add_snapshots(datafile)
+    read_data(datafile)
 
 
 
