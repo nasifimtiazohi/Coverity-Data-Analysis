@@ -36,7 +36,6 @@ def read_data(datafile):
     #turn into oldest to newest
     datalist = sorted(datalist,key=lambda k:k['snapshotDate'])
     
-    
     return datalist
 
 def trim_old_data(datalist):
@@ -129,13 +128,7 @@ def add_snapshots(datafile):
     update_end_date()
 
 if __name__=='__main__':
-    #pass xml filename as command line argument
-    try:
-        datafile=sys.argv[1]
-    except:
-        logging.error("no input data provided as cli argument")
-
-    read_data(datafile)
+    pass
 
 
 
