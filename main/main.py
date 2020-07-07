@@ -32,7 +32,7 @@ def invalidate_alerts_before_start_date(projectId):
     q = ''' update alert
         set is_invalid=1 
         where project_id= %s and first_detected  < 
-                                (select start_date 
+                                (select DATE_FORMAT(start_date,'%Y-%m-%d') 
                                 from project 
                                 where id=%s)'''
     sql.execute(q,(projectId,projectId))
