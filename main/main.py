@@ -101,12 +101,12 @@ if __name__=='__main__':
         #manually inspect here, outliers and filenames
         exit()
     
-    git_pull(projectId)
-    aps.add_snapshots(snapshotFile)
-    aa.add_n_update_alerts(projectId, alertFile)
-    fc.resolve_filename_prefixes(projectId)
-    ac.mine_commits(projectId)
-    ef.handle_external_files(projectId) #invalidates external file alerts
+    # git_pull(projectId)
+    # aps.add_snapshots(snapshotFile)
+    # aa.add_n_update_alerts(projectId, alertFile)
+    # fc.resolve_filename_prefixes(projectId)
+    # ac.mine_commits(projectId)
+    # ef.handle_external_files(projectId) #invalidates external file alerts
     act.analyze_actionability(projectId) #invalidate file renames/deletes
     pc.update_fix_complexity(projectId)
 

@@ -24,7 +24,8 @@ def get_product_cves(type, vendor,
                     product=None,
                     version= None, 
                     startDate=None, 
-                    endDate=None):
+                    endDate=None,
+                    getTotalCount=False):
     '''
     Retrieves cve for a product within a date range
     '''
@@ -59,7 +60,8 @@ def get_product_cves(type, vendor,
         data=json.loads(data.content)
         if idx==0:
             totalResults=data['totalResults']
-            print(totalResults)
+            if getTotalCount:
+                return totalResults
         cves=data['result']['CVE_Items']
         print("running well", len(cves),idx)
         if not cves:
@@ -75,12 +77,16 @@ def get_product_cves(type, vendor,
     
     return fulllist
 
-def get_project_cves(projectId):
+def get_project_cves(projectId, getTotalCount=False):
     q='''select * from project p
         join product_info pi on p.id = pi.project_id
         where p.id=%s '''
     r=sql.execute(q,(projectId,))[0]
     type, vendor, product, startDate, endDate= r['type'], r['vendor'],r['product'],r['start_date'],r['end_date']
+    if getTotalCount:
+        totalCount= get_product_cves(type, vendor, product=product, startDate=startDate, endDate=endDate,
+                                     getTotalCount=True)
+        return totalCount
     fulllist = get_product_cves(type, vendor, product=product, startDate=startDate, endDate=endDate)
     cves=list(fulllist.keys())
     cves.sort(reverse=True)
@@ -110,16 +116,18 @@ def make_csv(projectName, cves):
         for i,cve in enumerate(cves):
             writer.writerow([cve, get_description(cve)])
             print(i)
-     
+
 
 if __name__=='__main__':
-    project=sys.argv[1]
-    q='select id, name from project where name=%s'
-    results=sql.execute(q,(project,))
-    for item in results:
-        print(item['name'])
-        projectId=item['id']
-        cves=get_project_cves(projectId)
-        print(len(cves))
-        name=item['name']
-        make_csv(name,cves)
+    # project=sys.argv[1]
+    # q='select id, name from project where name=%s'
+    # results=sql.execute(q,(project,))
+    # for item in results:
+    #     print(item['name'])
+    #     projectId=item['id']
+    #     cves=get_project_cves(projectId)
+    #     print(len(cves))
+    #     name=item['name']
+    #     make_csv(name,cves)
+    projectId = sys.argv[1]
+    print(get_project_cves(projectId,getTotalCount=True))

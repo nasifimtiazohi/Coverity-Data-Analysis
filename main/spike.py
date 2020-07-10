@@ -17,6 +17,11 @@ on the same day.
 > 25,Incorrect deallocator used,164957,164957,1461 - 
 http://document-foundation-mail-archive.969070.n3.nabble.com/New-Defects-reported-by-Coverity-Scan-for-LibreOffice-td4191140.html
 
-> 
+> update alert 
+                set is_invalid=2
+                where alert_type_id=63
+                and project_id=26
+                and first_snapshot_id=164832
+                and last_snapshot_id=164832
 
 '''
