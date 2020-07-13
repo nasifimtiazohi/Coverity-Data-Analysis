@@ -74,18 +74,42 @@ def git_pull(projectId):
             encoding="437"
             ).split('\n')
     print(lines)
+    
+
+def is_valid_git_remote(url):
+    lines = subprocess.check_output(
+            shlex.split('git ls-remote {}'.format(url)), 
+            stderr=subprocess.STDOUT,
+            encoding="437"
+            )
+    if 'fatal: Could not read from remote repository' in lines:
+        return False
+    assert 'HEAD' in lines
+    return True
+
+def ask_project_parameters(project):
+    print("Project does not exist in database. Please provide below information to add to dataset.")
+    print("Enter the git remote url for the project: ")
+    git_url=input()
+    while not is_valid_git_remote(git_url):
+        print("Invalid remote url. Enter correct https git remote url for the project: ")
+        git_url=input()
+    
+    print("Enter the github url for the project: ")
+    gh_url=input()
+    print("Enter the brance name")
+    branch = input()
+    
+    q='insert into project values(null,%s,%s,%s,%s,null,null)'
+    sql.execute(q,(project, git_url, gh_url, branch))
+    
 
 if __name__=='__main__':
     project, snapshotFile, alertFile = read_cl_args()
     projectId=common.get_project_id(project)
     
     if not projectId:
-        #new project found
-        #insert project
-        #TODO ask for project parameters and formulate insert query based on that
-        sql.execute(add_new_project_queries[project])
-        
-        
+        ask_project_parameters(project)
         projectId=common.get_project_id(project)
         aps.add_snapshots(snapshotFile)
         aa.add_n_update_alerts(projectId, alertFile)
@@ -101,12 +125,12 @@ if __name__=='__main__':
         #manually inspect here, outliers and filenames
         exit()
     
-    # git_pull(projectId)
-    # aps.add_snapshots(snapshotFile)
-    # aa.add_n_update_alerts(projectId, alertFile)
-    # fc.resolve_filename_prefixes(projectId)
-    # ac.mine_commits(projectId)
-    # ef.handle_external_files(projectId) #invalidates external file alerts
+    git_pull(projectId)
+    aps.add_snapshots(snapshotFile)
+    aa.add_n_update_alerts(projectId, alertFile)
+    fc.resolve_filename_prefixes(projectId)
+    ac.mine_commits(projectId)
+    ef.handle_external_files(projectId) #invalidates external file alerts
     act.analyze_actionability(projectId) #invalidate file renames/deletes
     pc.update_fix_complexity(projectId)
 
