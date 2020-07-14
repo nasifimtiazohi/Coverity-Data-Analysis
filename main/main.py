@@ -9,9 +9,6 @@ import determine_actionability as act
 import patch_complexity as pc
 import subprocess, shlex
 
-add_new_project_queries={
-    #put insert queries for new project here
-}
 
 def read_cl_args():
     return sys.argv[1], sys.argv[2], sys.argv[3]
@@ -38,6 +35,7 @@ def invalidate_alerts_before_start_date(projectId):
     sql.execute(q,(projectId,projectId))
 
 def identify_outlier_spikes(projectId):
+    ''' manual approach'''
     threshold=1000
     q='''select project_id, type, first_detected, last_snapshot_id, count(*) as c
         from alert a
