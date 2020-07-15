@@ -117,17 +117,54 @@ def make_csv(projectName, cves):
             writer.writerow([cve, get_description(cve)])
             print(i)
 
+def addFromNvdApi(cve):
+    url='https://services.nvd.nist.gov/rest/json/cve/1.0/'+cve
+    response=requests.get(url)
+    while response.status_code != 200 :
+        time.sleep(3)
+        response=requests.get(url)
+    print('feteched cve: ',cve)
+    
+    data=json.loads(response.content)
+    data=data['result']['CVE_Items'][0]
+    
+    temp=data['cve']['problemtype']['problemtype_data'][0]['description']
+    cwes=[]
+    for t in temp:
+        if 'CWE' in t['value']:
+            cwes.append(t['value'])
+    
+    description=data['cve']['description']['description_data'][0]['value']
+    description=description.replace('"','')
+    
+    data=data['impact']
+    severity2, score2, severity3, score3 = [None] * 4
+    if 'baseMetricV2' in data.keys():
+        t=data['baseMetricV2']
+        severity2=t['severity']
+        score2=t['cvssV2']['baseScore']
+    if 'baseMetricV3' in data.keys():
+        t=data['baseMetricV3']
+        severity3= t['cvssV3']['baseSeverity']
+        score3=t['cvssV3']['baseScore']
+    
+    for cwe in cwes:   
+        insertQ='insert into cve values(%s,%s,%s,%s,%s,%s,%s)'
+        try:
+            sql.execute(insertQ,(cve, cwe, description, score2, severity2, score3, severity3))
+        except sql.pymysql.IntegrityError as error:
+            if error.args[0] == sql.PYMYSQL_DUPLICATE_ERROR:
+                print(cve,cwe, ' already exists')
+
+def insert_cves(projectId, cves):
+    for cve in cves:
+        addFromNvdApi(cve)
+    
 
 if __name__=='__main__':
-    # project=sys.argv[1]
-    # q='select id, name from project where name=%s'
-    # results=sql.execute(q,(project,))
-    # for item in results:
-    #     print(item['name'])
-    #     projectId=item['id']
-    #     cves=get_project_cves(projectId)
-    #     print(len(cves))
-    #     name=item['name']
-    #     make_csv(name,cves)
-    projectId = sys.argv[1]
-    print(get_project_cves(projectId,getTotalCount=True))
+    q='select * from product_info'
+    results=sql.execute(q)
+    for item in results:
+        projectId=item['project_id']
+        cves=get_project_cves(projectId)
+        insert_cves(projectId, cves)
