@@ -132,7 +132,10 @@ def addFromNvdApi(cve):
     cwes=[]
     for t in temp:
         if 'CWE' in t['value']:
-            cwes.append(t['value'])
+            if not 'NVD' in t['value']:
+                cwes.append(int(t['value'].split('-')[1].strip()))    
+            else:
+                cwes.append(t['value'])
     
     description=data['cve']['description']['description_data'][0]['value']
     description=description.replace('"','')
