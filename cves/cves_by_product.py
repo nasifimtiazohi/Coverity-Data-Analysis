@@ -117,13 +117,13 @@ def make_csv(projectName, cves):
             writer.writerow([cve, get_description(cve)])
             print(i)
 
-def addFromNvdApi(cve):
+def addFromNvdApi(projectId, cve):
     url='https://services.nvd.nist.gov/rest/json/cve/1.0/'+cve
     response=requests.get(url)
     while response.status_code != 200 :
         time.sleep(3)
         response=requests.get(url)
-    print('feteched cve: ',cve)
+    print('fetched cve: ',cve)
     
     data=json.loads(response.content)
     data=data['result']['CVE_Items'][0]
@@ -152,16 +152,16 @@ def addFromNvdApi(cve):
         score3=t['cvssV3']['baseScore']
     
     for cwe in cwes:   
-        insertQ='insert into cve values(%s,%s,%s,%s,%s,%s,%s)'
+        insertQ='insert into cve values(%s,%s,%s,%s,%s,%s,%s,%s)'
         try:
-            sql.execute(insertQ,(cve, cwe, description, score2, severity2, score3, severity3))
+            sql.execute(insertQ,(cve, cwe, projectId, description, score2, severity2, score3, severity3))
         except sql.pymysql.IntegrityError as error:
             if error.args[0] == sql.PYMYSQL_DUPLICATE_ERROR:
                 print(cve,cwe, ' already exists')
 
 def insert_cves(projectId, cves):
     for cve in cves:
-        addFromNvdApi(cve)
+        addFromNvdApi(projectId, cve)
     
 
 if __name__=='__main__':
