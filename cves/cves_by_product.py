@@ -1,9 +1,12 @@
-import sys
+import sys, os
 sys.path.append('../main')
 import common, sql
 import requests 
 import json, csv
 import datetime, time
+from dateutil import parser
+from multiprocessing import Pool
+from itertools import product
 
 def make_cpe_string(type,vendor,product=None,version=None):
     if not vendor:
@@ -62,6 +65,7 @@ def get_product_cves(type, vendor,
             totalResults=data['totalResults']
             if getTotalCount:
                 return totalResults
+            print(totalResults)
         cves=data['result']['CVE_Items']
         print("running well", len(cves),idx)
         if not cves:
@@ -127,7 +131,7 @@ def addFromNvdApi(projectId, cve):
     
     data=json.loads(response.content)
     data=data['result']['CVE_Items'][0]
-    
+    publishDate=data['publishedDate']
     temp=data['cve']['problemtype']['problemtype_data'][0]['description']
     cwes=[]
     for t in temp:
@@ -152,22 +156,27 @@ def addFromNvdApi(projectId, cve):
         score3=t['cvssV3']['baseScore']
     
     for cwe in cwes:   
-        insertQ='insert into cve values(%s,%s,%s,%s,%s,%s,%s,%s)'
+        insertQ='insert into cve values(%s,%s,%s,%s,%s,%s,%s,%s,%s)'
         try:
-            sql.execute(insertQ,(cve, cwe, projectId, description, score2, severity2, score3, severity3))
+            sql.execute(insertQ,(cve, cwe, projectId, description, score2, severity2, score3, severity3,publishDate))
         except sql.pymysql.IntegrityError as error:
             if error.args[0] == sql.PYMYSQL_DUPLICATE_ERROR:
                 print(cve,cwe, ' already exists')
 
 def insert_cves(projectId, cves):
-    for cve in cves:
-        addFromNvdApi(projectId, cve)
-    
+    pool=Pool(os.cpu_count())
+    pool.starmap(addFromNvdApi, product(projectId, cves))
+    # for cve in cves:
+    #     addFromNvdApi(projectId, cve)
+
+        
+        
 
 if __name__=='__main__':
-    q='select * from product_info'
-    results=sql.execute(q)
-    for item in results:
-        projectId=item['project_id']
-        cves=get_project_cves(projectId)
-        insert_cves(projectId, cves)
+    pass
+    # q='select * from product_info where project_id >= 6'
+    # results=sql.execute(q)
+    # for item in results:
+    #     projectId=item['project_id']
+    #     cves=get_project_cves(projectId)
+    #     insert_cves(projectId, cves)
