@@ -1,5 +1,5 @@
 import sys
-sys.path.append('../main')
+sys.path.append('../../main')
 import common, sql
 import re
 import logging
@@ -29,11 +29,11 @@ def get_file_function_names(projectId,commits):
                 hm[file]+= functions
             else:
                 hm[file]=functions
-     
     allFiles=list(set(allFiles))
+    
     for k in hm.keys():
         hm[k]=list(set(hm[k]))
-    
+        
     return allFiles, hm
 
 def processHeader(line):
@@ -82,37 +82,35 @@ def get_alert_on_files(publishDate,files):
         results += sql.execute(q,(file,publishDate))
     return results
  
-def get_alert_on_functions(publishDate, functions):
-    functionAlerts= []
-    for file in functions.keys():
-        for func in functions[file]:
-            if func is None:
-                continue
-            elif func=='null':
-                q='''select * from alert a
-                join memory_error me on a.alert_type_id = me.alert_type_id
-                join file f on a.file_id = f.id
-                where memory=1
-                and filepath_on_coverity = %s
-                and `function` is null
-                and first_detected < %s'''
-                results=sql.execute(q,('/'+file,publishDate))
-            else:
-                q='''select * from alert a
-                    join memory_error me on a.alert_type_id = me.alert_type_id
-                    join file f on a.file_id = f.id
-                    where memory=1
-                    and filepath_on_coverity = %s
-                    and `function` = %s
-                    and first_detected < %s'''
-                results=sql.execute(q,('/'+file,func,publishDate))
-            if results:
-                functionAlerts += results 
+def get_alert_on_functions(publishDate, file, func):
+    functionAlerts=[]
+    if func is None:
+        return functionAlerts
+    elif func=='null':
+        q='''select * from alert a
+        join memory_error me on a.alert_type_id = me.alert_type_id
+        join file f on a.file_id = f.id
+        where memory=1
+        and filepath_on_coverity = %s
+        and `function` is null
+        and first_detected < %s'''
+        results=sql.execute(q,('/'+file,publishDate))
+    else:
+        q='''select * from alert a
+            join memory_error me on a.alert_type_id = me.alert_type_id
+            join file f on a.file_id = f.id
+            where memory=1
+            and filepath_on_coverity = %s
+            and `function` = %s
+            and first_detected < %s'''
+        results=sql.execute(q,('/'+file,func,publishDate))
+    if results:
+        functionAlerts += results 
     return functionAlerts 
             
     
 if __name__=='__main__':
-    with open('opencv.csv') as csv_file:
+    with open('linuxmemoryexploit.csv') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         line_count = 0
         projectId=None
@@ -122,22 +120,25 @@ if __name__=='__main__':
                 line_count += 1
             else:
                 if not projectId:
-                    projectId=common.get_project_id(row[2])
+                    projectId=7
                 commits=row[-1].replace(' ','').split(',')
                 cve=row[0]
-                q='select publish_date from cve where id = %s'
-                publishDate=sql.execute(q,(cve))[0]['publish_date']
-                files, functions = get_file_function_names(projectId, commits)
-                fileAlerts= get_alert_on_files(publishDate, files)
-                unparseable = 0
-                for file in functions.keys():
-                    unparseable+= functions[file].count(None)
-                functionAlerts= []
-                for file in functions.keys():
-                    for func in functions[file]:
-                        functionAlerts += get_alert_on_functions(publishDate, functions)
-                t=[cve, len(fileAlerts), unparseable, len(functionAlerts)]
-                print(','.join(str(x) for x in t))
+                try:
+                    q='select publish_date from cve where id = %s'
+                    publishDate=sql.execute(q,(cve))[0]['publish_date']
+                    files, functions = get_file_function_names(projectId, commits)
+                    fileAlerts= get_alert_on_files(publishDate, files)
+                    unparseable = 0
+                    for file in functions.keys():
+                        unparseable+= functions[file].count(None)
+                    functionAlerts= []
+                    for file in functions.keys():
+                        for func in functions[file]:
+                                functionAlerts += get_alert_on_functions(publishDate, file, func)
+                    t=[cve, len(fileAlerts), unparseable, len(functionAlerts)]
+                    print(','.join(str(x) for x in t))
+                except:
+                    continue
                 
                      
                     

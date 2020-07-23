@@ -256,7 +256,7 @@ TSWLatexianTemp*
 
 #possible data files
 .xml
-#.csv
+.csv
 .json
 .zip
 .html
