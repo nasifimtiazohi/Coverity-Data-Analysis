@@ -73,7 +73,7 @@ def get_alert_on_files(publishDate,files):
     files=['/'+f for f in files]
     results=[]
     for file in files:
-        q='''select * from alert a
+        q='''select a.* from alert a
             join memory_error me on a.alert_type_id = me.alert_type_id
             join file f on a.file_id = f.id
             where memory=1
@@ -87,7 +87,7 @@ def get_alert_on_functions(publishDate, file, func):
     if func is None:
         return functionAlerts
     elif func=='null':
-        q='''select * from alert a
+        q='''select a.* from alert a
         join memory_error me on a.alert_type_id = me.alert_type_id
         join file f on a.file_id = f.id
         where memory=1
@@ -96,7 +96,7 @@ def get_alert_on_functions(publishDate, file, func):
         and first_detected < %s'''
         results=sql.execute(q,('/'+file,publishDate))
     else:
-        q='''select * from alert a
+        q='''select a.* from alert a
             join memory_error me on a.alert_type_id = me.alert_type_id
             join file f on a.file_id = f.id
             where memory=1
