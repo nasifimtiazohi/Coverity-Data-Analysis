@@ -102,23 +102,28 @@ def get_publish_date(cve):
 
 def analyze(cves):
     for cve in cves.keys():
-        publishDate = get_publish_date(cve)
-        commits=cves[cve]
-        files, functions = pc.get_file_function_names(projectId, commits)
-        fileAlerts= pc.get_alert_on_files(publishDate, files)
-        if fileAlerts:
-            for alert in fileAlerts:
-                alertId=alert['id']
-                sql.execute('insert into cve_file_alerts values(%s,%s)',(cve,alertId))
-            
-            functionAlerts=[]
-            for file in functions.keys():
-                for func in functions[file]:
-                        functionAlerts += pc.get_alert_on_functions(publishDate, file, func)
-            
-            for alert in functionAlerts:
-                alertId=alert['id']
-                sql.execute('insert into cve_function_alerts values(%s,%s)',(cve,alertId))
+        try:
+            publishDate = get_publish_date(cve)
+            commits=cves[cve]
+            files, functions = pc.get_file_function_names(projectId, commits)
+            fileAlerts= pc.get_alert_on_files(publishDate, files)
+            if fileAlerts:
+                for alert in fileAlerts:
+                    alertId=alert['id']
+                    sql.execute('insert into cve_file_alerts values(%s,%s)',(cve,alertId))
+                
+                functionAlerts=[]
+                for file in functions.keys():
+                    for func in functions[file]:
+                            functionAlerts += pc.get_alert_on_functions(publishDate, file, func)
+                
+                for alert in functionAlerts:
+                    alertId=alert['id']
+                    sql.execute('insert into cve_function_alerts values(%s,%s)',(cve,alertId))
+            else:
+                sql.execute('insert into cve_file_alerts values(%s,%s)',(cve,0))
+        except:
+            sql.execute('insert into cve_file_alerts values(%s,%s)',(cve,-1))
         print('analyzed',cve)
 def insert_cve_fix_commits(cve,commits,connection=None):
     q='insert into cve_fix_commits values(%s,%s)'
@@ -129,9 +134,9 @@ def insert_cve_fix_commits(cve,commits,connection=None):
         sql.execute(q,(cve,commit),connection=connection)
 
 if __name__ == '__main__':
-    cves = get_cves()
-    pool=Pool(os.cpu_count())
-    pool.map(collect_commit, cves)
+    # cves = get_cves()
+    # pool=Pool(os.cpu_count())
+    # pool.map(collect_commit, cves)
     
     results = sql.execute('select * from cve_fix_commits where commit is not null')
     cves={}
