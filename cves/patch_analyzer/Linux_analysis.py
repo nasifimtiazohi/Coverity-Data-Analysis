@@ -10,7 +10,9 @@ import common
 import patch2coverity as pc
 import time
 from multiprocessing import Pool
-
+import dateutil.parser as dp
+import pytz
+import re
 projectId = 7
 '''
 Get the memory related Linux CVEs
@@ -100,45 +102,11 @@ def collect_commit(item):
 def get_publish_date(cve):
     return sql.execute('select publish_date from cve where id=%s',(cve,))[0]['publish_date']
 
-def analyze(cves):
-    for cve in cves.keys():
-        try:
-            publishDate = get_publish_date(cve)
-            commits=cves[cve]
-            files, functions = pc.get_file_function_names(projectId, commits)
-            fileAlerts= pc.get_alert_on_files(publishDate, files)
-            if fileAlerts:
-                for alert in fileAlerts:
-                    alertId=alert['id']
-                    sql.execute('insert into cve_file_alerts values(%s,%s)',(cve,alertId))
-                
-                functionAlerts=[]
-                for file in functions.keys():
-                    for func in functions[file]:
-                            functionAlerts += pc.get_alert_on_functions(publishDate, file, func)
-                
-                for alert in functionAlerts:
-                    alertId=alert['id']
-                    sql.execute('insert into cve_function_alerts values(%s,%s)',(cve,alertId))
-            else:
-                sql.execute('insert into cve_file_alerts values(%s,%s)',(cve,0))
-        except:
-            sql.execute('insert into cve_file_alerts values(%s,%s)',(cve,-1))
-        print('analyzed',cve)
-def insert_cve_fix_commits(cve,commits,connection=None):
-    q='insert into cve_fix_commits values(%s,%s)'
-    if not commits:
-        sql.execute(q,(cve,None),connection=connection)
-        return
-    for commit in commits:
-        sql.execute(q,(cve,commit),connection=connection)
-
-if __name__ == '__main__':
-    # cves = get_cves()
-    # pool=Pool(os.cpu_count())
-    # pool.map(collect_commit, cves)
-    
-    results = sql.execute('select * from cve_fix_commits where commit is not null')
+def fill_cve_file_function_alerts():
+    q='''select * from cve_fix_commits where commit is not null
+            and cve not in
+            (select cve from cve_file_alerts);'''
+    results = sql.execute(q)
     cves={}
     for item in results:
         id=item['cve']
@@ -148,4 +116,174 @@ if __name__ == '__main__':
         else:
             cves[id].append(commit)
     print(len(list(cves.keys())))
-    analyze(cves)
+    for cve in cves.keys():
+        try:
+            publishDate = get_publish_date(cve)
+            commits=cves[cve]
+            files, functions = pc.get_file_function_names(projectId, commits)
+            fileAlerts= pc.get_alert_on_files(publishDate, files)
+            if fileAlerts:
+                for alert in fileAlerts:
+                    alertId=alert['id']
+                    sql.execute('insert into cve_file_alerts values(%s,%s,null)',(cve,alertId))
+                
+                functionAlerts=[]
+                for file in functions.keys():
+                    for func in functions[file]:
+                            functionAlerts += pc.get_alert_on_functions(publishDate, file, func)
+                
+                for alert in functionAlerts:
+                    alertId=alert['id']
+                    sql.execute('insert into cve_function_alerts values(%s,%s,null)',(cve,alertId))
+            else:
+                sql.execute('insert into cve_file_alerts values(%s,%s,null)',(cve,0))
+        except:
+            sql.execute('insert into cve_file_alerts values(%s,%s,null)',(cve,-1))
+        print('analyzed',cve)
+def insert_cve_fix_commits(cve,commits,connection=None):
+    q='insert into cve_fix_commits values(%s,%s,%s,%s)'
+    if not commits:
+        sql.execute(q,(cve,None,None,None),connection=connection)
+        return
+    for commit in commits:
+        commit_date=get_commit_date(commit)
+        merge_date=get_merged_date(commit)
+        sql.execute(q,(cve,commit,commit_date,merge_date),connection=connection)
+
+
+def determine_fixed_after_patch():
+    q='''select *
+        from cve_function_alerts cfa
+        join cve_fix_commits cfc on cfa.cve = cfc.cve
+        join
+            (select a.id, a.status, a.first_detected, s.date as fix_date from alert a
+                join snapshot s on a.last_snapshot_id=s.id) t
+        on cfa.alert_id=t.id'''
+    results = sql.execute(q)
+    
+    q='update cve_function_alerts set fixed_after_patch = %s where cve = %s and alert_id =%s'
+    for item in results:
+        cve=item['cve']
+        aid=item['alert_id']
+        if item['status'] != 'Fixed':
+            sql.execute(q,('unfixed',cve,aid))
+            continue
+        commit_date= get_commit_date(item['commit'])
+        fix_date=pytz.utc.localize(item['fix_date']).date()
+        detection_date=item['first_detected']
+        print(cve, commit_date, fix_date, detection_date)
+        if commit_date <= fix_date and commit_date >= detection_date:
+            sql.execute(q,('yes',cve,aid))
+        else:
+            sql.execute(q,('no',cve,aid))
+        print(cve)
+    
+
+def get_commit_date(commit):
+    common.switch_dir_to_project_path(projectId)
+    output = subprocess.check_output(
+                shlex.split("git show --no-patch --no-notes --pretty='%cd' "+commit), 
+                stderr=subprocess.STDOUT,
+                encoding="437").strip()
+    return dp.parse(output).date()
+
+def get_merged_date(sha, connection=None):
+    common.switch_dir_to_project_path(projectId,connection=connection)
+    # when-merged tool by default checks for master branch
+    # https://github.com/mhagger/git-when-merged
+    lines = subprocess.check_output(
+        shlex.split("git when-merged -l "+sha),
+        stderr=subprocess.STDOUT, encoding="437").split('\n')
+    dateline = None
+    direct_commit = False
+    for nextLine in lines:
+        if bool(re.search('Commit is directly on this branch', nextLine, re.I)):
+            direct_commit = True
+        if bool(re.match('Date:', nextLine, re.I)):
+            dateline = nextLine
+            break
+    if direct_commit or not dateline:
+        print("direct commit", sha)
+        return get_commit_date(sha)
+    else:
+        date = re.match('Date:(.*)', dateline, re.I).group(1)
+        date = date.strip()
+        date = dp.parse(date)
+    
+    return date
+
+
+def get_dates_patch_commit():
+    q='select * from cve_fix_commits where commit is not null and commit_date is null'
+    results = sql.execute(q)
+    print(len(results))
+    for item in results:
+        cve=item['cve']
+        commit=item['commit']
+        commit_date=get_commit_date(commit)
+        merge_date=get_merged_date(commit)
+        print(commit_date,merge_date,cve,commit)
+        q='update cve_fix_commits set commit_date=%s, merge_date=%s where cve=%s and commit=%s'
+        sql.execute(q,(commit_date,merge_date,cve,commit))
+
+
+def get_cve_merge_date(cve):
+    q='''select *
+        from cve_fix_commits
+        where cve=%s;'''
+    results=sql.execute(q,(cve,))
+    
+    dates=[]
+    for item in results:
+        dates.append(item['merge_date'].date())
+    
+    dates=list(set(dates))
+    
+    return dates
+    
+def analyze():
+    q='''select cfa.*,a.*,s.date as last_detected from cve_file_alerts cfa
+        join alert a on cfa.alert_id = a.id
+        join snapshot s on a.last_snapshot_id=s.id
+        where cfa.alert_id > 0;'''
+    alerts=sql.execute(q)
+    
+    q='update cve_file_alerts set fixed_at_patch=%s where cve=%s and alert_id=%s'
+    for alert in alerts:
+        cve=alert['cve']
+        print(cve)
+        aid=alert['alert_id']
+        if alert['status'] != 'Fixed':
+            sql.execute(q,('notFixed',cve,aid))
+            continue
+        
+        first_detected = alert['first_detected']
+        last_detected= alert['last_detected'].date()
+        first_not_detected_anymore_date =  (common.get_snapshot_date(
+                                    projectId, 
+                                    common.get_next_snapshotId(projectId, alert['last_snapshot_id']))).date()
+        merge_dates=get_cve_merge_date(cve)
+        
+        flag = False
+        for merge_date in merge_dates:
+            if first_detected <= merge_date and (merge_date >= last_detected and merge_date <= first_not_detected_anymore_date):
+                flag=True
+                break
+        if flag:
+            sql.execute(q,('yes',cve,aid))
+        else:
+            sql.execute(q,('no',cve,aid))
+        
+
+if __name__ == '__main__':
+    # cves = get_cves()
+    # pool=Pool(os.cpu_count())
+    # pool.map(collect_commit, cves)
+    # get_dates_patch_commit()
+    
+    #fill_cve_file_function_alerts()
+    
+    analyze()
+    
+    
+    
