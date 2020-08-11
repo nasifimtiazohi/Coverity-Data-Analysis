@@ -20,7 +20,7 @@
 *.xlsx
 *.csv
 *.jpg
-*.jpeg
+#*.jpeg
 *.png
 
 ## Intermediate documents:

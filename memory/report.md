@@ -133,7 +133,7 @@ Below figure explains the workflow.
 For more details,
 we refer to the original paper [[1]](#1).
 
-![Alt text](drawingfinal.jpg  "Automatically identifying actionable alerts through alert detection
+![Alt text](./drawingfinal.jpg  "Automatically identifying actionable alerts through alert detection
 history and affected file’s commit history")
 
 
