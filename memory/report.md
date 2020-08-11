@@ -1,4 +1,6 @@
-# Introduction:
+# Memory Errors in Security Testing
+
+## Introduction
 Software development is an error-prone activity. 
 Code written and reviewed by skilled developers 
 may end up with various types of bugs 
@@ -60,15 +62,110 @@ followed by a discussion
 on implication and possible threats 
 of results presented.
 
-# Dataset:
-Coverity dataset: We have a dataset from prior work that we extended.
-# CVE dataset:
+## Dataset
+We primarily work with two datasets:
+1) An extension of the Coverity dataset 
+used in a pior work by Imtiaz et al.[[1]](#1),
+2) The CVE dataset from National Vulnerability Database [[2]](#2) 
+
+Alerts in Coverity dataset
+and CVEs in NVD database
+have corresponding CWE mapping
+(Common Weakness Enumeration (CWE)
+is a list of software and hardware weaknesses [[3]](#3)).
+Two human reviwers independently 
+classified the CWE identifiers 
+as memory vs. non-memory
+to separate out the memory-related issues
+in our dataset.
+
+The following subsections explain
+the data soources,
+and subseuquent CWE classification.
+
+### Coverity Dataset
+##### Dataset from prior work:
+In our prior work [[1]](#1),
+we studied historical scan reports
+by a static analysis security testing tool, Coverity,
+for five large projects.
+Four projects were in C/C++ 
+(Linux, Firefox, Samba, Kodi)
+and one in Java (Ovirt-engine).
+The projects were selected based on -
+i) size (at least 100,000 lines of code),
+ii) Coverity scan duration and scan interval
+(Coverity scan reports available 
+for at least past five years
+with median scan interval being
+less than a week),
+iii) access to data 
+(project maintainers have grant authors' access to the data),
+and iv) developer activity 
+(porject maintainers confirmed of their monitoring Coverity reports).
+
+In the Coverity dataset,
+for each scan report,
+the alerts are tagged as wither
+i) Fixed (Coverity stopped detecting the alert in the code,
+we will refer to this as <em>eliminated</em>),
+ii) Dismissed (When developers have explicitly marked
+an alert as <em>False Positive</em> or <em>Intentional</em>),
+iii) New (Coverity still detects the alert in the current scan,
+we refer to these as <em>alive</em> alerts).
+
+For the eliminated alerts,
+to distinguish between **developer fix** 
+and other modes of elimination (e.g. alert suppression, file deletion/renaming),
+we track any commits made on the affected files for an alert
+to see if there were any valid code change made 
+when the alert was first marked as fixed by Coverity.
+The alerts that were fixed though code change 
+made by developers,
+we refer to them as <em>actionable</em> alerts.
+We also calculated the lifespan of each alert
+(the timespan Coverity kept detecting an alert),
+and the fix complexity for the actionable alerts
+(change in files, lines of code, 
+and logical blocks of code
+in the commit that fixed the alert).
+Below figure explains the workflow.
+For more details,
+we refer to the original paper [[1]](#1).
+
+![Alt text](drawingfinal.jpg  "Automatically identifying actionable alerts through alert detection
+history and affected file’s commit history")
+
+
+
+
+
+##### Extension of the dataset for this paper:
+
+
+
+### CVE dataset:
 CWE classification for memory vs. non-memory:
 
-# Findings:
+### CWE classification:
+Two reviewers
 
-# Discussion:
+## Findings
 
-# Threats to validity:
+## Discussion
+### Implications
+### Threats to validity
 
-# Conclusion
+## Conclusion
+
+# References
+<a id="1">[1]</a> 
+Imtiaz, Nasif, Brendan Murphy, and Laurie Williams. 
+"How Do Developers Act on Static Analysis Alerts? An Empirical Study of Coverity Usage." 
+2019 IEEE 30th International Symposium on Software Reliability Engineering (ISSRE). IEEE, 2019.
+
+<a id="2">[2]</a>
+https://nvd.nist.gov/vuln/full-listing
+
+<a id="3">[3]</a>
+https://cwe.mitre.org/
