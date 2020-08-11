@@ -48,10 +48,10 @@ were identified by the security tool
 when they were first introduced in the code. 
 We state our research questions as:
 
-**RQ1:** How frequently memory-related alerts are identified by a static analysis security testing tool? 
-        How do developers respond to these alerts?
-**RQ2:** How many CVEs were identified by a static analysis security testing tool 
-        when the involved flaws were first introduced in the code?
+- **RQ1:** <em>How frequently memory-related alerts are identified by a static analysis security testing tool? 
+        How do developers respond to these alerts?</em>
+- **RQ2:** <em> How many CVEs were identified by a static analysis security testing tool 
+        when the involved flaws were first introduced in the code? </em>
 
 In the following sections,
 we first explain our dataset
