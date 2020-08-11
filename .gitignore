@@ -19,7 +19,7 @@
 *.txt
 *.xlsx
 *.csv
-*.jpg
+#*.jpg
 #*.jpeg
 *.png
 
