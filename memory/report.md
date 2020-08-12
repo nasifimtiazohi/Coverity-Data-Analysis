@@ -36,6 +36,7 @@ security testing techniques failed to identify them or
 the testing could have had indeed identified the flaw but 
 the developers did not take a corrective action in time.
 
+
 In this paper, 
 we study 10 C/C++ projects 
 that have been using a static analysis security testing tool. 
@@ -50,7 +51,7 @@ were identified by the security tool
 when they were first introduced in the code. 
 We state our research questions as:
 
-- **RQ1:** <em>How frequently memory-related alerts are identified by a static analysis security testing tool? 
+- **RQ1:** <em>How frequently memory-related alerts are identified by a static      analysis security testing tool? 
         How do developers respond to these alerts?</em>
 - **RQ2:** <em> How many CVEs were identified by a static analysis security testing tool 
         when the involved flaws were first introduced in the code? </em>
@@ -133,19 +134,90 @@ Below figure explains the workflow.
 For more details,
 we refer to the original paper [[1]](#1).
 
-![Alt text](./drawingfinal.jpg  "Automatically identifying actionable alerts through alert detection
+![Alt text](drawingfinal.jpg  "Automatically identifying actionable alerts through alert detection
 history and affected file’s commit history")
 
 
-
-
-
 ##### Extension of the dataset for this paper:
+For this paper,
+we focus only on C/C++ project,
+keeping four projects out of the five
+of the original paper
+and extending their data upto
+latest available scans.
+We also added six new projects 
+where the project maintainers 
+have granted us access to the scan reports.
+While we did not strictly follow
+the selection criteria on 
+project size and scan duration 
+of the original paper,
+we confirmed that developers of these new projects
+nmonitored Coverity alerts 
+by looking at the alert triage rate
+(how many alerts were triaged by developers on Coverity Scan interface).
+The details of projects used in this paper are below:
 
-
+| Project               | Scan Reports   | Start Date   | End Date   |   Scan Interval (days) | Total                      Alerts   |   Triaged Alerts (%) | Lines of Code   |
+|:----------------------|---------------:|:-------------|:-----------|-----------------------:|------------------------------------:|---------------------:|----------------:|
+| Linux                 | 648            | 2012-05-17   | 2020-06-15 |                      3 | 19,514                              |                13.66 | 13,959,859      |
+| Firefox               | 662            | 2006-02-22   | 2018-10-27 |                      2 | 12,944                              |                36.33 | 8,223,984       |
+| LibreOffice           | 414            | 2012-10-13   | 2020-06-26 |                      4 | 11,982                              |                55.42 | 6,130,847       |
+| Samba                 | 770            | 2006-02-23   | 2020-06-17 |                      3 | 4,507                               |                52.58 | 2,941,352       |
+| VTK                   | 74             | 2015-12-21   | 2017-08-12 |                      7 | 2,522                               |                 2.50 | 2,354,516       |
+| OpenCV                | 553            | 2012-12-12   | 2020-06-30 |                      2 | 2,443                               |                 9.41 | 1,264,056       |
+| Kodi                  | 489            | 2012-08-28   | 2020-05-16 |                      3 | 2,393                               |                42.42 | 743,623         |
+| !CHAOS Control System | 170            | 2015-01-14   | 2019-03-19 |                      1 | 1,980                               |                12.37 | 880,411         |
+| Chromium EC           | 1,713          | 2016-01-15   | 2020-07-06 |                      0 | 964                                 |                28.11 | 61,040          |
+| Thunderbird           | 438            | 2006-04-12   | 2020-02-29 |                      1 | 885                                 |                27.23 | 640,424         |
 
 ### CVE dataset:
-CWE classification for memory vs. non-memory:
+For the ten projects from Coverity dataset,
+we intended to get the published CVEs
+since the first scan report of the dataset.
+We searched the CVEs from NVD api
+through the Common Product Enumeration (CPE) identifier
+for each project.
+However, for Chromium EC, VTK, and !CHAOS Control System,
+we could not find a matching CPE identifier.
+We pulled the CVEs for rest of the seven projects.
+
+Further, we augmented the CVE dataset
+with patch commit for CVE whenever available
+(Patch commit is the exact commit(s)
+that were merged to the product code 
+to fix a vulnerability).
+We looked for the patch commit
+for each CVE through
+the reference links and provided in the CVE data
+and respective project repositories.
+For Firefox, LibreOffice, and Thunderbird,
+we could not find the commits
+while Kodi had only 3 CVEs in our dataset
+(all are non memory-related).
+We collected the patch commits for rest of the 
+three projects:
+Linux, Samba, and OpenCV.
+
+### CWE classification for memory vs. non-memory:
+
+In order to focus on memory-related errors,
+we classified the alerts in Coverity dataset
+and the CVEs
+as <em>memory</em> and <em>non-memory</em>
+through their corresponding CWE identifier.
+CWE [[3]](#3) is a list of common weakness types in software
+and serves as a common measuring stick for security tools.
+Each CWE identifier has a name, description, 
+and various details on 
+how to detect, mitigate, or exploit software weaknesses.
+Two human reviewers, 
+one graduate student and one industry professional,
+independently reviewed the CWE ids 
+and classified them as memory or non-memory.
+
+
+
 
 ### CWE classification:
 Two reviewers
