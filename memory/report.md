@@ -51,10 +51,8 @@ were identified by the security tool
 when they were first introduced in the code. 
 We state our research questions as:
 
-- **RQ1:** <em>How frequently memory-related alerts are identified by a static      analysis security testing tool? 
-        How do developers respond to these alerts?</em>
-- **RQ2:** <em> How many CVEs were identified by a static analysis security testing tool 
-        when the involved flaws were first introduced in the code? </em>
+- **RQ1:** <em>How frequently memory-related alerts are identified by a static      analysis security testing tool? How do developers respond to these alerts?</em>
+- **RQ2:** <em> How many CVEs were identified by a static analysis security testing tool when the involved flaws were first introduced in the code? </em>
 
 In the following sections,
 we first explain our dataset
@@ -195,9 +193,11 @@ For Firefox, LibreOffice, and Thunderbird,
 we could not find the commits
 while Kodi had only 3 CVEs in our dataset
 (all are non memory-related).
-We collected the patch commits for rest of the 
-three projects:
-Linux, Samba, and OpenCV.
+While it is possible to collect patch commits
+in the case of Sambe and OpenCV,
+they have low number of CVEs published.
+Therefore, we only focus on Linux
+when answering RQ2. 
 
 ### CWE classification for memory vs. non-memory:
 
@@ -239,14 +239,21 @@ We classified 43 CWE ids as memory (26.7%)
 and the rest as non-memory.
 
 
+## Findings: <em> How frequently memory-related alerts are identified by a static      analysis security testing tool? How do developers respond to these alerts? </em>
+
+#### To what extent do memory related alerts appear when C/C++ projects are scanned by Coverity? What is the severity rating of these alerts?
+
+#### What percent of memory related alerts are actionable (i.e. acted on by developers)? What percent of memory related alerts were marked as false positives by the developers?
+
+#### What is the lifespan of memory related alerts on the codebase?
+
+#### What is the fix complexity of memory related alerts on the codebase?
 
 
 
 
-### CWE classification:
-Two reviewers
 
-## Findings
+## Findings: <em>How many CVEs were identified by a static analysis security testing tool when the involved flaws were first introduced in the code? </em>
 
 ## Discussion
 ### Implications
