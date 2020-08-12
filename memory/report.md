@@ -286,31 +286,32 @@ approximately
 We then looked at 
 how many memory related alerts 
 were eliminated (elimination does not necessarily mean developer fix),
-how many were acted on by developers (eliminated through some code change),
+how many were acted on by developers (fixed through valid code change),
 and how many were explicitly triaged as bug 
 by the respective project developers.
-We again see roughly one-third (median rate of 36.2%)
-memory alerts get acted on by the developers.
+We find 39.9% (median among ten projects)
+memory alerts to be acted on by the developers
+while 12.4% of them are
+explicitly marked as bug by the developers.
 We also compared the elimination rate, 
 actionable, and bug rate
 between memory and non-memory alerts 
-through Mann-Whitney U test for the test projects.
+through Mann-Whitney U test for the ten projects.
 However, we do not find any statistical significant
 difference between memory and non-memory alerts.
 
-| Project               |   Total Memory Alerts | Eliminated   | Actionable   | Triaged Bug by Devs.   |
-|:----------------------|----------------------:|-------------:|-------------:|-----------------------:|
-| Linux                 |                  7903 | 73.06%       | 43.54%       | 3.11%                  |
-| Firefox               |                  5448 | 77.22%       | 49.72%       | 12.43%                 |
-| LibreOffice           |                  4194 | 80.64%       | 73.75%       | 52.43%                 |
-| Samba                 |                  1700 | 77.88%       | 39.88%       | 3.82%                  |
-| ovirt-engine          |                  1272 | 36.08%       | 27.12%       | 2.59%                  |
-| VTK                   |                  1166 | 12.78%       | 7.2%         | 0.43%                  |
-| OpenCV                |                   710 | 89.15%       | 32.54%       | 0.28%                  |
-| Kodi                  |                   682 | 68.62%       | 54.11%       | 25.07%                 |
-| Thunderbird           |                   357 | 63.31%       | 24.37%       | 12.61%                 |
-| Chromium EC           |                   306 | 93.46%       | 29.74%       | 17.65%                 |
-| !CHAOS Control System |                   282 | 80.14%       | 39.01%       | 1.42%                  |
+| Project               |   Total Memory Alerts | Eliminated   | Actionable    | Triaged Bug by Devs.  |
+|:----------------------|----------------------:|--------------------:|--------------------:|------------------------------:|
+| Linux                 |                  7903 | 73.06%              | 43.54%              | 3.11%                         |
+| Firefox               |                  5448 | 77.22%              | 49.72%              | 12.43%                        |
+| LibreOffice           |                  3975 | 80.63%              | 73.46%              | 51.35%                        |
+| Samba                 |                  1700 | 77.88%              | 39.88%              | 3.82%                         |
+| VTK                   |                  1166 | 12.78%              | 7.2%                | 0.43%                         |
+| OpenCV                |                   710 | 89.15%              | 32.54%              | 0.28%                         |
+| Kodi                  |                   682 | 68.62%              | 54.11%              | 25.07%                        |
+| Thunderbird           |                   357 | 63.31%              | 24.37%              | 12.61%                        |
+| Chromium EC           |                   306 | 93.46%              | 29.74%              | 17.65%                        |
+| !CHAOS Control System |                   282 | 80.14%              | 39.01%              | 1.42%                         |
 
 We then looked at the unactionable memory alerts.
 Developers on Coverity interface
@@ -334,19 +335,17 @@ throguh Mann-Whitney U test
 where p-value for all three comparison
 were below 0.05.
 
-
-| Project         |   Total Memory Alerts | Intentional   | False Positive   | Alive   | Unknown Elimination   |
-|:-------------|----------------------:|--------------:|-----------------:|--------:|----------------------:|
-| Chromium EC  |                   306 | 0.33%         | 2.61%            | 3.59%   | 63.73%                |
-| Firefox      |                  5448 | 3.82%         | 9.69%            | 8.87%   | 25.11%                |
-| Kodi         |                   682 | 10.56%        | 9.38%            | 11.44%  | 9.09%                 |
-| LibreOffice  |                  4194 | 0.81%         | 18.36%           | 0.07%   | 6.75%                 |
-| Linux        |                  7903 | 1.64%         | 4.02%            | 21.08%  | 28.22%                |
-| OpenCV       |                   710 | 0.56%         | 1.97%            | 8.31%   | 41.55%                |
-| Samba        |                  1700 | 0.82%         | 2.88%            | 18.12%  | 35.53%                |
-| Thunderbird  |                   357 | 0.28%         | 0.28%            | 31.37%  | 38.94%                |
-| VTK          |                  1166 | 0.09%         | 0.17%            | 86.96%  | 4.8%                  |
-| ovirt-engine |                  1272 | 5.58%         | 49.21%           | 9.04%   | 8.57%                 |
+| Project        | Total memory alert   | Marked Intentional   | Marked False Positive   | Alive at last scan   | Eliminated through undetermined ways  |
+|:------------|---------------:|---------------------:|------------------------:|---------------:|-----------------------------:|
+| Linux       | 7,903          | 1.64%                | 4.02%                   | 21.08%         | 28.22%                       |
+| Firefox     | 5,448          | 3.82%                | 9.69%                   | 8.87%          | 25.11%                       |
+| LibreOffice | 3,975          | 0.78%                | 18.39%                  | 0.08%          | 7.02%                        |
+| Samba       | 1,700          | 0.82%                | 2.88%                   | 18.12%         | 35.53%                       |
+| VTK         | 1,166          | 0.09%                | 0.17%                   | 86.96%         | 4.8%                         |
+| OpenCV      | 710            | 0.56%                | 1.97%                   | 8.31%          | 41.55%                       |
+| Kodi        | 682            | 10.56%               | 9.38%                   | 11.44%         | 9.09%                        |
+| Thunderbird | 357            | 0.28%                | 0.28%                   | 31.37%         | 38.94%                       |
+| Chromium EC | 306            | 0.33%                | 2.61%                   | 3.59%          | 63.73%                       |
 #### What is the lifespan of memory related alerts on the codebase?
 
 
