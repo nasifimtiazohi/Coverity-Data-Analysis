@@ -215,6 +215,30 @@ Two human reviewers,
 one graduate student and one industry professional,
 independently reviewed the CWE ids 
 and classified them as memory or non-memory.
+We defined CWEs as meory-related
+when <em>a weakness can make software
+to access memory in a way 
+that was unintended by the developer.</em>
+These weaknesses include access errors, 
+use of uninitialized variables,
+and memory leaks 
+which can all lead to accessing system memory 
+in an unintended way
+
+There are 161 distinct CWE identifiers
+covering both of our data set.
+Two reveiwers independetly classified
+them as memory vs. non-memory
+with a Kohen's Kappa aggreement rate of 0.79.
+On the CWE identifires
+that were classified differently,
+the reviewers had a discussion
+and came to a negotiated agreement
+for a final classification.
+We classified 43 CWE ids as memory (26.7%)
+and the rest as non-memory.
+
+
 
 
 
