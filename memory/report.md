@@ -319,21 +319,13 @@ can mark an alert as False Positive or Intentional
 which gives us direct feedback about the alerts
 from the respective project developers.
 We see that memory alerts
-are rarely intentional coding 
+are rarely to be intentional coding 
 (median rate of .8%)
-and significantly less likely
-to be intentional coding than non-memory alerts (6.3%).
-Conversely, we find memory alerts
-are significantly more likely to be  
-incorrectly flagged by tool, i.e. False Positives (3.5%)
-than non-memory alerts (2.5%).
-Again, memory alerts are less likely
-to remain alive in the code (10.2%)
-than non-memory alerts (15.2%).
-We measured statisfical significance
-throguh Mann-Whitney U test
-where p-value for all three comparison
-were below 0.05.
+and are significantly less than
+non-memory alerts (5.7%).
+However, we do not find any difference
+in being false positive or alive
+between memory and non-memory related alerts.
 
 | Project        | Total memory alert   | Marked Intentional   | Marked False Positive   | Alive at last scan   | Eliminated through undetermined ways  |
 |:------------|---------------:|---------------------:|------------------------:|---------------:|-----------------------------:|
@@ -346,15 +338,99 @@ were below 0.05.
 | Kodi        | 682            | 10.56%               | 9.38%                   | 11.44%         | 9.09%                        |
 | Thunderbird | 357            | 0.28%                | 0.28%                   | 31.37%         | 38.94%                       |
 | Chromium EC | 306            | 0.33%                | 2.61%                   | 3.59%          | 63.73%                       |
+
+
+
+
 #### What is the lifespan of memory related alerts on the codebase?
 
+We define lifespan of an alert
+as the difference in days
+between when an alert was first detected
+and when it was last detected.
+Below tables present lifespan in days
+for actionable alerts and 
+then specifically the alerts that were 
+triaged as bug by the project developers
+with a breakdown between memory vs. non-memory.
+**The median lifespan among ten projects for actionable memory alerts are 77 days and 98.5 days when the alert was triaged as bug.**
+The difference in lifespan
+for memory and non-memory alerts
+were statistically insignificant.
 
+
+| Project               |   Lifespan of all actionable alerts (days) |   Lifespan of Memory alerts (days) |   Lifespan of Non-memory alerts (days) |
+|:----------------------|-------------------------------------------:|-----------------------------------:|---------------------------------------:|
+| Thunderbird           |                                      915.5 |                               1591 |                                    490 |
+| OpenCV                |                                      345.5 |                                342 |                                    380 |
+| Linux                 |                                      258   |                                257 |                                    258 |
+| !CHAOS Control System |                                      136.5 |                                 48 |                                    203 |
+| Firefox               |                                      124   |                                 44 |                                    154 |
+| ovirt-engine          |                                      102   |                                 77 |                                    119 |
+| Chromium EC           |                                       93   |                                247 |                                     70 |
+| Samba                 |                                       70   |                                143 |                                     37 |
+| Kodi                  |                                       62   |                                  6 |                                     82 |
+| VTK                   |                                       31   |                                 24 |                                     42 |
+| LibreOffice           |                                       18   |                                 16 |                                     18 |
+
+
+| Project      |   Lifespan of alerts marked as bug (days) |   Lifespan of Memory alerts (days) |   Lifespan of Non-memory alerts (days) |
+|:-------------|------------------------------------------:|-----------------------------------:|---------------------------------------:|
+| Thunderbird  |                                      1385 |                             1779   |                                  970   |
+| Samba        |                                       665 |                              665   |                                  911   |
+| Chromium EC  |                                       377 |                              429   |                                  367   |
+| Linux        |                                       190 |                              134   |                                  252   |
+| Firefox      |                                        64 |                               63   |                                   71.5 |
+| ovirt-engine |                                        46 |                               39.5 |                                   49.5 |
+| VTK          |                                        24 |                               24   |                                   30   |
+| LibreOffice  |                                        15 |                               21   |                                    6   |
+| OpenCV       |                                         5 |                              850.5 |                                    5   |
+| Kodi         |                                         2 |                                2   |                                    2   |
 
 #### What is the fix complexity of memory related alerts on the codebase?
 
+In our prior work[[1]](#1),
+we found fix of static analysis
+are low in complexity;
+a median of 4 lines of code change 
+in the affected file.
+We find similar results
+for memory alerts
+in this paper.
+When reporting median,
+for memory alerts:
+we find 2.5 files are changed
+with 6.6 lines of code change
+and 2 blocks of logical change (change in consecutive lines).
+Within the affected file,
+there is 3.5 lines of code change
+and 1 block of logical change.
 
 
+#### What is the prevalence and developer response of alerts in terms of CWE identifiers?
 
+Here, we present a breakdown 
+of our prior analyses in term of
+CWE-identifier.
+Below table presents information
+for top 10 CWE-identifiers
+prevalent in Coverity dataset
+with 'Null Pointer Dereference' being
+the most common alert.
+
+
+|   CEW-Id | CWE-name                                                                | No. of alerts   | Eliminated   | Actionable   |   lifespan (days) |   Triaged Bug by Devs. | Triaged False Positive   |
+|---------:|:------------------------------------------------------------------------|:----------------|:-------------|:-------------|------------------:|-----------------------:|:-------------------------|
+|      476 | NULL Pointer Dereference                                                | 8,689 (14.45%)  | 81.86%       | 58.42%       |              44   |                  21.99 | 4.12%                    |
+|      404 | Improper Resource Shutdown or Release                                   | 4,250 (7.07%)   | 66.92%       | 43.41%       |             122   |                  14.33 | 18.99%                   |
+|      119 | Improper Restriction of Operations within the Bounds of a Memory Buffer | 2,125 (3.53%)   | 67.06%       | 33.22%       |             278   |                   4.42 | 12.89%                   |
+|      457 | Use of Uninitialized Variable                                           | 1,862 (3.1%)    | 74.01%       | 53.49%       |             135   |                  15.52 | 6.12%                    |
+|      190 | Integer Overflow or Wraparound                                          | 1,003 (1.67%)   | 54.24%       | 35.39%       |             315   |                   7.88 | 7.48%                    |
+|      125 | Out-of-bounds Read                                                      | 939 (1.56%)     | 67.41%       | 42.81%       |             244   |                   8.2  | 11.82%                   |
+|      416 | Use After Free                                                          | 877 (1.46%)     | 73.43%       | 36.26%       |              71   |                   7.41 | 19.27%                   |
+|      120 | Buffer Copy without Checking Size of Input ('Classic Buffer Overflow')  | 751 (1.25%)     | 78.7%        | 15.98%       |             515   |                   2.13 | 3.6%                     |
+|      170 | Improper Null Termination                                               | 378 (0.63%)     | 68.78%       | 56.88%       |             379.5 |                   7.94 | 9.26%                    |
+|      590 | Free of Memory not on the Heap                                          | 363 (0.6%)      | 50.96%       | 30.03%       |             322   |                   0    | 6.89%                    |
 
 ## Findings: <em>How many CVEs were identified by a static analysis security testing tool when the involved flaws were first introduced in the code? </em>
 
