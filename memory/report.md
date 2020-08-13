@@ -68,13 +68,13 @@ We state our research questions as:
 ## Dataset
 We primarily work with two datasets:
 1) An extension of the Coverity dataset 
-used in our pior work, Imtiaz et al.[[1]](#1);
+used in our pior work, Imtiaz et al. [[1]](#1);
 2) The CVE dataset from National Vulnerability Database [[2]](#2).
 
 Alerts in Coverity dataset
 and CVEs in NVD database
 have corresponding CWE mapping
-(Common Weakness Enumeration (CWE)
+(Common Weakness Enumeration, CWE,
 is a list of software and hardware weaknesses [[3]](#3)).
 Two human reviwers independently 
 classified the CWE identifiers 
@@ -83,7 +83,7 @@ to separate out the memory-related issues
 in our dataset.
 
 The following subsections explain
-the data soources,
+the data sources,
 and subseuquent CWE classification.
 
 ### Coverity Dataset
@@ -105,7 +105,7 @@ less than a week),
 iii) access to data 
 (project maintainers have grant authors' access to the data),
 and iv) developer activity 
-(porject maintainers confirmed of their 
+(project maintainers confirmed of their 
 monitoring of Coverity reports).
 
 In the Coverity dataset,
@@ -125,10 +125,10 @@ and other modes of elimination
 we track any commit
 made on the affected files for an alert
 to see if there were any valid code change made 
-when the alert was first marked as fixed by Coverity.
-The alerts that were fixed though code change 
+when the alert was marked as fixed by Coverity.
+The alerts that were fixed through code change 
 made by developers,
-we refer to them as <em>actionable</em> alerts.
+we refer to them as <em>**actionable**</em> alerts.
 We also calculated the lifespan of each alert
 (the timespan Coverity kept detecting an alert),
 and the fix complexity for the actionable alerts
@@ -147,13 +147,13 @@ history and affected file’s commit history")
 For this paper,
 we focus only on C/C++ project,
 keeping four projects out of the five
-of the original paper
+in the original paper
 and extending their data upto
 latest available scans.
-We also added six new projects 
+We also add six new projects 
 where the project maintainers 
 have granted us access to the scan reports.
-While we did not strictly follow
+While we do not strictly follow
 the selection criteria on 
 project size and scan duration 
 of the original paper,
@@ -188,11 +188,11 @@ we could not find a matching CPE identifier.
 We pulled the CVEs for rest of the seven projects.
 
 Further, we augmented the CVE dataset
-with patch commit for CVE whenever available
-(Patch commit is the exact commit(s)
+with patch commits for a CVE whenever available
+(Patch commit is the exact commit
 that were merged to the product code 
 to fix a vulnerability).
-We looked for the patch commit
+We looked for the patch commits
 for each CVE through
 the reference links provided in the CVE data
 and respective project repositories.
@@ -204,15 +204,15 @@ While it is possible to collect patch commits
 in the case of Sambe and OpenCV,
 they also have low number of CVEs published.
 Therefore, we only focus on Linux
-when answering RQ2. 
+when answering parts of RQ2. 
 
 We also looked for
 publicly available exploit scripts
 for the CVEs in our dataset.
-We use a open source tool, cve_searchsploit[[5]](#5),
+We use a open source tool, cve_searchsploit [[5]](#5),
 in order to find the available exploit scripts.
-THe tool pulls its data
-from publicly curated 'Exploit Database'[[6]](#6).
+The tool pulls its data
+from publicly curated 'Exploit Database' [[6]](#6).
 
 ### CWE classification for memory vs. non-memory:
 
@@ -238,7 +238,7 @@ These weaknesses include access errors,
 use of uninitialized variables,
 and memory leaks 
 which can all lead to accessing system memory 
-in an unintended way
+in an unintended way.
 
 There are 161 distinct CWE identifiers
 covering both of our data set.
@@ -297,7 +297,7 @@ by the respective project developers.
 We find 39.9% (median among ten projects)
 memory alerts to be acted on by the developers
 while 12.4% of them are
-explicitly marked as bug by the developers.
+explicitly marked as bug.
 We also compared the elimination rate, 
 actionable, and bug rate
 between memory and non-memory alerts 
@@ -325,7 +325,7 @@ which gives us direct feedback about the alerts
 from the respective project developers.
 We see that memory alerts
 are rarely to be intentional coding 
-(median rate of .8%)
+(median rate of 0.8%)
 and are significantly less than
 non-memory alerts (5.7%).
 However, we do not find any difference
@@ -442,11 +442,9 @@ the most common alert.
 Common Vulnerabilties and Exposures (CVEs)
 are a reference method for
 publicly known software vulnerabilities[[2]](#2).
-While software developments is in general 
-an error-prone activity,
-software typically go through security testing
-being released. 
-Vulnerabilities may still remain in the code
+While softwares typically go through 
+security testing before being released,
+vulnerabilities may still remain in the code
 either due to 
 testing techniques not having a perfect recall 
 or inadequate developer corrective action.
@@ -518,13 +516,13 @@ non-memory alerts (6.6).
 
 #### What percent of memory related CVEs have exploit scripts available?
 
-If a vulnerability can be exploited
+If all vulnerabilities can be exploited
 in the wild to attack the involved system
 is debatable.
 However, for many CVEs,
 there are exploit scripts publicly available.
 We find that 
-**for 396 CVEs among the seven projects, there is an exploit script availble out of which 234 (59 %) are memory related.**
+**for 396 CVEs among the seven projects, there is an exploit script available out of which 234 (59 %) are memory related.**
 Below table present a CWE-breakdown
 for memory CVEs with an exploit:
 |   CWE-id | CWE-name                                                                | portion among memory CVEs   |
@@ -541,7 +539,7 @@ for memory CVEs with an exploit:
 |      415 | Double Free                                                             | 2 (0.9%)                    |
 
 
-#### How many Linux CVEs were identified by Coverity when the vulnerability was first intriduced in the code?
+#### How many Linux CVEs were identified by Coverity when the vulnerability was first introduced in the code?
 
 For this question,
 we focus on only Linux product.
@@ -549,7 +547,7 @@ In the NVD data feed for Linux product,
 there can be link to the patch commit
 (the code change merged into codebase
 to fix a CVE) 
-in the reference links.
+among the reference links.
 For 1,427 Linux memory related CVEs,
 we found patch commits for 592 CVEs.
 
