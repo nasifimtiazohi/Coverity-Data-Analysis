@@ -495,6 +495,7 @@ we find that
 We further look at the severity ratings,
 in the form of CVSS2 and CVSS3 scores
 for these CVEs.
+
 | Project     |   Memory CVEs |   Median CVSS2 score |   Median CVSS3 score |
 |:------------|--------------:|---------------------:|---------------------:|
 | Linux       |          1427 |                 7.2  |                  7.8 |
@@ -525,6 +526,7 @@ We find that
 **for 396 CVEs among the seven projects, there is an exploit script available out of which 234 (59 %) are memory related.**
 Below table present a CWE-breakdown
 for memory CVEs with an exploit:
+
 |   CWE-id | CWE-name                                                                | portion among memory CVEs   |
 |---------:|:------------------------------------------------------------------------|:----------------------------|
 |      119 | Improper Restriction of Operations within the Bounds of a Memory Buffer | 145 (62.0%)                 |
