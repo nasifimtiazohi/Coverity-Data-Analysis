@@ -209,6 +209,14 @@ they also have low number of CVEs published.
 Therefore, we only focus on Linux
 when answering RQ2. 
 
+We also looked for
+publicly available exploit scripts
+for the CVEs in our dataset.
+We use a open source tool, cve_searchsploit[[5]](#5),
+in order to find the available exploit scripts.
+THe tool pulls its data
+from publicly curated 'Exploit Database'[[6]](#6).
+
 ### CWE classification for memory vs. non-memory:
 
 In order to focus on memory-related errors,
@@ -434,9 +442,150 @@ the most common alert.
 
 ## Findings: <em>How many CVEs were identified by a static analysis security testing tool when the involved flaws were first introduced in the code? </em>
 
-## Discussion
-### Implications
-### Threats to validity
+Common Vulnerabilties and Exposures (CVEs)
+are a reference method for
+publicly known software vulnerabilities[[2]](#2).
+While software developments is in general 
+an error-prone activity,
+software typically go through security testing
+being released. 
+Vulnerabilities may still remain in the code
+either due to 
+testing techniques not having a perfect recall 
+or inadequate developer corrective action.
+In this paper,
+we investigate how many CVEs
+could have been identified by a security tool
+when the bug was first introduced
+in order to estimate the contribution of
+testing inefficacy vs. developer inaction.
+
+In the following subsections,
+we first investigate how many CVEs
+were memory related for 
+the projects in Coverity dataset.
+We then choose Linux as a case study
+to determine how many of its CVEs
+were identified by Coverity when first introduced.
+
+#### What percent of CVEs are memory related? 
+
+We pulled CVEs for seven projects
+from the Coverity dataset
+that were published 
+after the first scan 
+and before the last scan report
+in our dataset.
+We further classified CVEs
+as memory vs. non-memory
+based on their corresponding CWE ids.
+Below table shows a breakdown
+of CVEs for these projects:
+
+| Project     | No. of CVEs (within study timeline)   | memory-related CVEs   |
+|:------------|--------------------------------------:|----------------------:|
+| Linux       | 3,144                                 | 45.4%                 |
+| Firefox     | 1,731                                 | 36.0%                 |
+| Thunderbird | 940                                   | 45.3%                 |
+| Samba       | 138                                   | 29.7%                 |
+| LibreOffice | 40                                    | 40.0%                 |
+| OpenCV      | 33                                    | 75.8%                 |
+| Kodi        | 3                                     | 0.0%                  |
+
+As a median for 
+the seven projects,
+we find that
+**40% of the CVEs are memory related**.
+
+We further look at the severity ratings,
+in the form of CVSS2 and CVSS3 scores
+for these CVEs.
+| Project     |   Memory CVEs |   Median CVSS2 score |   Median CVSS3 score |
+|:------------|--------------:|---------------------:|---------------------:|
+| Linux       |          1427 |                 7.2  |                  7.8 |
+| Firefox     |           624 |                 7.5  |                  9.8 |
+| Thunderbird |           426 |                 7.55 |                  9.8 |
+| Samba       |            41 |                 5    |                  6.5 |
+| OpenCV      |            25 |                 6.8  |                  8.8 |
+| LibreOffice |            16 |                 7.5  |                  9.8 |
+
+We find that
+median CVSS2 score for memory alerts
+for all seven projects is 7.35
+which is significantly greater than
+non-memory alerts (5.0).
+Similarly for CVSS3 rating,
+memory alerts median rating is 9.3,
+significantly larger than 
+non-memory alerts (6.6).
+
+#### What percent of memory related CVEs have exploit scripts available?
+
+If a vulnerability can be exploited
+in the wild to attack the involved system
+is debatable.
+However, for many CVEs,
+there are exploit scripts publicly available.
+We find that 
+**for 396 CVEs among the seven projects, there is an exploit script availble out of which 234 (59 %) are memory related.**
+Below table present a CWE-breakdown
+for memory CVEs with an exploit:
+|   CWE-id | CWE-name                                                                | portion among memory CVEs   |
+|---------:|:------------------------------------------------------------------------|:----------------------------|
+|      119 | Improper Restriction of Operations within the Bounds of a Memory Buffer | 145 (62.0%)                 |
+|      416 | Use After Free                                                          | 41 (17.5%)                  |
+|      787 | Out-of-bounds Write                                                     | 13 (5.6%)                   |
+|      190 | Integer Overflow or Wraparound                                          | 9 (3.8%)                    |
+|      125 | Out-of-bounds Read                                                      | 7 (3.0%)                    |
+|      824 | Access of Uninitialized Pointer                                         | 4 (1.7%)                    |
+|      476 | NULL Pointer Dereference                                                | 3 (1.3%)                    |
+|      191 | Integer Underflow (Wrap or Wraparound)                                  | 2 (0.9%)                    |
+|      122 | Heap-based Buffer Overflow                                              | 2 (0.9%)                    |
+|      415 | Double Free                                                             | 2 (0.9%)                    |
+
+
+#### How many Linux CVEs were identified by Coverity when the vulnerability was first intriduced in the code?
+
+For this question,
+we focus on only Linux product.
+In the NVD data feed for Linux product,
+there can be link to the patch commit
+(the code change merged into codebase
+to fix a CVE) 
+in the reference links.
+For 1,427 Linux memory related CVEs,
+we found patch commits for 592 CVEs.
+
+We then analyzed the patch commit(s)
+for each CVE,
+to extract the names of the files
+that were changed in the fix
+with an assumption that 
+the vulnerability related code
+are among these files.
+We then look at the time
+when these patch commit(s)
+were merged into the main codebase of Linux.
+If Coverity had any memory alert 
+on the involved files of the CVE,
+the alert should get fixed 
+when the patch commit is merged
+(alert last appears before patch commit is merged,
+and get fixed after the merge).
+If there is such Coverity memory alerts
+on the involved files that get fixed
+when a CVE get fixed,
+we assume that Coveriy had an alert
+relevant to the certain CVE.
+
+**Only for 15 CVEs (2.5%), we found there was a possible Coverity alert**. 
+We further looked at the 15 cases manually
+by looking at the CVE description and
+type of the alert raised by Coverity.
+For 12 cases, 
+the alert type somewhat matches CVE description, 
+while we could not determine such mataching
+for rest of the three cases.
 
 ## Conclusion
 
@@ -454,3 +603,9 @@ https://cwe.mitre.org/
 
 <a id="4">[4]</a>
 McHugh, Mary L. "Interrater reliability: the kappa statistic." Biochemia medica: Biochemia medica 22.3 (2012): 276-282.
+
+<a id="5">[5]</a>
+https://github.com/andreafioraldi/cve_searchsploit
+
+<a id="6">[6]</a>
+https://www.exploit-db.com/
