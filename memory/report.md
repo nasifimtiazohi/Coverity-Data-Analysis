@@ -550,6 +550,9 @@ to fix a CVE)
 among the reference links.
 For 1,427 Linux memory related CVEs,
 we found patch commits for 592 CVEs.
+The rest of the CVEs were mostly
+in external product code (e.g. flash player)
+and not in Linux code itself.
 
 We then analyzed the patch commit(s)
 for each CVE,
@@ -570,7 +573,7 @@ and get fixed after the merge).
 If there is such Coverity memory alerts
 on the involved files that get fixed
 when a CVE get fixed,
-we assume that Coveriy had an alert
+we assume that Coverity had an alert
 relevant to the certain CVE.
 
 **Only for 15 CVEs (2.5%), we found there was a possible Coverity alert**. 
@@ -581,8 +584,36 @@ For 12 cases,
 the alert type somewhat matches CVE description, 
 while we could not determine such mataching
 for rest of the three cases.
+We further looked at the lifespan
+for these 15 alerts 
+and found their median lifespan 
+to be 567 days.
 
 ## Conclusion
+
+We found memory related alerts
+to be frequently detected during
+static analysis security testing.
+However, based on how actively 
+the project developers are monitoring
+the tool alerts,
+these errors can take years to get fixed.
+For the ten studied projects,
+we found a median lifesspan of 77 days
+before memory alerts get fixed.
+
+We also find that around 40%
+of the published CVEs for 
+the studied C/C++ projects
+are realted to memory.
+These memory CVEs have higher 
+CVSS severity ratings 
+and likelihood of having an exploit script public
+than non-memory CVEs.
+We also found only 2.5% Linux CVEs
+were possibly detected during 
+static analysis security testing.
+
 
 # References
 <a id="1">[1]</a> 
