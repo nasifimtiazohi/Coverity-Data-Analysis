@@ -496,14 +496,21 @@ We further look at the severity ratings,
 in the form of CVSS2 and CVSS3 scores
 for these CVEs.
 
-| Project     |   Memory CVEs |   Median CVSS2 score |   Median CVSS3 score |
-|:------------|--------------:|---------------------:|---------------------:|
-| Linux       |          1427 |                 7.2  |                  7.8 |
-| Firefox     |           624 |                 7.5  |                  9.8 |
-| Thunderbird |           426 |                 7.55 |                  9.8 |
-| Samba       |            41 |                 5    |                  6.5 |
-| OpenCV      |            25 |                 6.8  |                  8.8 |
-| LibreOffice |            16 |                 7.5  |                  9.8 |
+
+from tabulate import tabulate
+df=df.sort_values('memory', ascending=False)
+df=df.rename(columns={'name':'Project', 'memory':'Memory CVEs','memory_cvss2':'Median CVSS2 score','memory_cvss3':'Median CVSS3 score',
+'nonmemory_cvss2':'Non-memory medain CVSS2',
+'nonmemory_cvss3':'Non-memory medain CVSS3'})
+print(tabulate(df, tablefmt='pipe',headers='keys',showindex=False))
+| Project     |   Memory CVEs |   Median CVSS2 score |   Median CVSS3 score |   Non-memory medain CVSS2 |   Non-memory medain CVSS3 |
+|:------------|--------------:|---------------------:|---------------------:|--------------------------:|--------------------------:|
+| Linux       |          1427 |                 7.2  |                  7.8 |                      4.9  |                       6.7 |
+| Firefox     |           624 |                 7.5  |                  9.8 |                      5    |                       6.1 |
+| Thunderbird |           426 |                 7.55 |                  9.8 |                      5    |                       6.5 |
+| Samba       |            41 |                 5    |                  6.5 |                      5    |                       6.5 |
+| OpenCV      |            25 |                 6.8  |                  8.8 |                      4.65 |                       6.7 |
+| LibreOffice |            16 |                 7.5  |                  9.8 |                      6.8  |                       7.8 |
 
 We find that
 median CVSS2 score for memory alerts
