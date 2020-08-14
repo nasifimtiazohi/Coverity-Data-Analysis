@@ -503,7 +503,7 @@ df=df.rename(columns={'name':'Project', 'memory':'Memory CVEs','memory_cvss2':'M
 'nonmemory_cvss2':'Non-memory medain CVSS2',
 'nonmemory_cvss3':'Non-memory medain CVSS3'})
 print(tabulate(df, tablefmt='pipe',headers='keys',showindex=False))
-| Project     |   Memory CVEs |   Median CVSS2 score |   Median CVSS3 score |   Non-memory medain CVSS2 |   Non-memory medain CVSS3 |
+| Project     |   Memory CVEs |   Median CVSS2 score |   Median CVSS3 score |   Non-memory median CVSS2 |   Non-memory median CVSS3 |
 |:------------|--------------:|---------------------:|---------------------:|--------------------------:|--------------------------:|
 | Linux       |          1427 |                 7.2  |                  7.8 |                      4.9  |                       6.7 |
 | Firefox     |           624 |                 7.5  |                  9.8 |                      5    |                       6.1 |
