@@ -238,7 +238,12 @@ and the rest as non-memory.
 
 We investigate the 
 scan history dataset
-to answer the following questions:
+to answer this research question.
+When we present a comparison
+between memory and non-memory,
+the comparison was made
+through Mann-Whitney U test.
+
 
 #### To what extent do memory related alerts appear when C/C++ projects are scanned by a static analysis tool?
 
@@ -304,7 +309,8 @@ are rarely to be intentional coding
 (median rate of 0.8%)
 and are significantly less than
 non-memory alerts (5.7%).
-However, we do not find any difference
+However, we do not find any 
+statistically significant difference
 in being false positive or alive
 between memory and non-memory related alerts.
 
@@ -474,13 +480,6 @@ We further look at the severity ratings,
 in the form of CVSS2 and CVSS3 scores
 for these CVEs.
 
-
-from tabulate import tabulate
-df=df.sort_values('memory', ascending=False)
-df=df.rename(columns={'name':'Project', 'memory':'Memory CVEs','memory_cvss2':'Median CVSS2 score','memory_cvss3':'Median CVSS3 score',
-'nonmemory_cvss2':'Non-memory medain CVSS2',
-'nonmemory_cvss3':'Non-memory medain CVSS3'})
-print(tabulate(df, tablefmt='pipe',headers='keys',showindex=False))
 | Project     |   Memory CVEs |   Median CVSS2 score |   Median CVSS3 score |   Non-memory median CVSS2 |   Non-memory median CVSS3 |
 |:------------|--------------:|---------------------:|---------------------:|--------------------------:|--------------------------:|
 | Linux       |          1427 |                 7.2  |                  7.8 |                      4.9  |                       6.7 |
