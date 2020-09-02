@@ -67,11 +67,13 @@ We state our research questions as:
 
 ## Dataset
 We primarily work with two datasets:
-1) An extension of the Coverity dataset 
-used in our pior work, Imtiaz et al. [[1]](#1);
-2) The CVE dataset from National Vulnerability Database [[2]](#2).
+1) A proprietary dataset that consists of
+historical scan reports for 10 C/C++ projects
+by a static analysis security testing tool,
+we refer to this dataset as 'scan history' dataset;
+1) The CVE dataset from National Vulnerability Database [[2]](#2).
 
-Alerts in Coverity dataset
+Alerts in scan history dataset
 and CVEs in NVD database
 have corresponding CWE mapping
 (Common Weakness Enumeration, CWE,
@@ -86,38 +88,34 @@ The following subsections explain
 the data sources,
 and subseuquent CWE classification.
 
-### Coverity Dataset
-##### Dataset from prior work:
-In our prior work [[1]](#1),
-we studied historical scan reports
-by a static analysis security testing tool, Coverity,
-for five large projects.
-Four projects were in C/C++ 
-(Linux, Firefox, Samba, Kodi)
-and one in Java (Ovirt-engine).
-The projects were selected based on -
-i) size (at least 100,000 lines of code),
-ii) Coverity scan duration and scan interval
-(Coverity scan reports available 
-for at least past five years
-with median scan interval being
-less than a week),
-iii) access to data 
-(project maintainers have grant authors' access to the data),
-and iv) developer activity 
-(project maintainers confirmed of their 
-monitoring of Coverity reports).
+### Scan History Dataset
+We study historical scan reports
+by an industry-leading 
+static analysis security testing tool
+for ten C/C++ projects.
+For each project, 
+we have a range of scan reports
+between a certain time period
+with short intervals
+for the latest code version
+on the corresponding scan date.
+We confirmed that developers 
+of respective projects monitor
+these scan reports
+by looking at the alert triage rate
+(how many alerts were triaged by developers).
 
-In the Coverity dataset,
-for each scan report,
+
+For each scan report,
 the alerts are tagged as either
-i) Fixed (Coverity stopped detecting the alert in the code,
+i) Fixed (the security tool
+stopped detecting the alert in the code,
 we will refer to this as <em>eliminated</em>),
 ii) Dismissed (When developers have explicitly marked
 an alert as <em>False Positive</em> or <em>Intentional</em>), or
-iii) New (Coverity still detects the alert in the current scan,
+iii) New (the security tool 
+still detects the alert in the current scan,
 we refer to these as <em>alive</em> alerts).
-
 For the eliminated alerts,
 to distinguish between **developer fix** 
 and other modes of elimination 
@@ -125,42 +123,22 @@ and other modes of elimination
 we track any commit
 made on the affected files for an alert
 to see if there were any valid code change made 
-when the alert was marked as fixed by Coverity.
-The alerts that were fixed through code change 
+when the alert was marked as fixed in a subsequent scan.
+The alerts that were fixed 
+through code change 
 made by developers,
 we refer to them as <em>**actionable**</em> alerts.
 We also calculated the lifespan of each alert
-(the timespan Coverity kept detecting an alert),
+(the timespan the security tool kept detecting an alert),
 and the fix complexity for the actionable alerts
 (change in files, lines of code, 
 and logical blocks of code
 in the commit that fixed the alert).
 Below figure explains the workflow.
-For more details,
-we refer to our original paper [[1]](#1).
 
-![Alt text](drawingfinal.jpg  "Automatically identifying actionable alerts through alert detection
+![Alt text](drawingfinal.jpeg  "Automatically identifying actionable alerts through alert detection
 history and affected file’s commit history")
 
-
-##### Extension of the dataset for this paper:
-For this paper,
-we focus only on C/C++ project,
-keeping four projects out of the five
-in the original paper
-and extending their data upto
-latest available scans.
-We also add six new projects 
-where the project maintainers 
-have granted us access to the scan reports.
-While we do not strictly follow
-the selection criteria on 
-project size and scan duration 
-of the original paper,
-we confirmed that developers of these new projects
-monitored Coverity alerts 
-by looking at the alert triage rate
-(how many alerts were triaged by developers on Coverity Scan interface).
 The details of projects used in this paper are below:
 
 | Project               | Scan Reports   | Start Date   | End Date   |   Scan Interval (days) | Total                      Alerts   |   Triaged Alerts (%) | Lines of Code   |
@@ -176,8 +154,9 @@ The details of projects used in this paper are below:
 | Chromium EC           | 1,713          | 2016-01-15   | 2020-07-06 |                      0 | 964                                 |                28.11 | 61,040          |
 | Thunderbird           | 438            | 2006-04-12   | 2020-02-29 |                      1 | 885                                 |                27.23 | 640,424         |
 
+
 ### CVE dataset:
-For the ten projects from Coverity dataset,
+For the ten projects from scan history dataset,
 we intended to get the published CVEs
 since the first scan report of the dataset.
 We searched the CVEs from NVD api
@@ -217,7 +196,7 @@ from publicly curated 'Exploit Database' [[6]](#6).
 ### CWE classification for memory vs. non-memory:
 
 In order to focus on memory-related errors,
-we classified the alerts in Coverity dataset
+we classified the alerts in scan history dataset
 and the CVEs
 as <em>memory</em> and <em>non-memory</em>
 through their corresponding CWE identifier.
@@ -257,20 +236,17 @@ and the rest as non-memory.
 
 ## Findings: <em> How frequently do memory-related alerts get identified by a static analysis security testing tool? How do developers respond to these alerts? </em>
 
-To anwer this research question,
-we look at the alerts 
-generated by Coverity
-for the ten projects 
-and answer following questions:
+We investigate the 
+scan history dataset
+to answer the following questions:
 
-
-#### To what extent do memory related alerts appear when C/C++ projects are scanned by Coverity?
+#### To what extent do memory related alerts appear when C/C++ projects are scanned by a static analysis tool?
 
 While the rate of alerts
 that are memory related
 vary among projects,
 approximately 
-**one-third of Coverity alerts were found to be memory related**
+**one-third of static analysis alerts were found to be memory related**
 (median rate of 35.4% among ten projects).
 
 | Project               | Total Alerts   | Memory Alerts   |
@@ -319,8 +295,8 @@ difference between memory and non-memory alerts.
 | !CHAOS Control System |                   282 | 80.14%              | 39.01%              | 1.42%                         |
 
 We then looked at the unactionable memory alerts.
-Developers on Coverity interface
-can mark an alert as False Positive or Intentional
+Developers in our dataset had the ability
+to mark an alert as False Positive or Intentional
 which gives us direct feedback about the alerts
 from the respective project developers.
 We see that memory alerts
@@ -419,7 +395,7 @@ of our prior analyses in term of
 CWE-identifier.
 Below table presents information
 for top 10 CWE-identifiers
-prevalent in Coverity dataset
+prevalent in scan history dataset
 with 'Null Pointer Dereference' being
 the most common alert.
 
@@ -458,15 +434,17 @@ testing inefficacy vs. developer inaction.
 In the following subsections,
 we first investigate how many CVEs
 were memory related for 
-the projects in Coverity dataset.
+the projects in scan history dataset.
 We then choose Linux as a case study
 to determine how many of its CVEs
-were identified by Coverity when first introduced.
+were identified by the
+studied static analysis security testing tool
+when first introduced.
 
 #### What percent of CVEs are memory related? 
 
 We pulled CVEs for seven projects
-from the Coverity dataset
+from the scan history dataset
 that were published 
 after the first scan 
 and before the last scan report
@@ -548,7 +526,7 @@ for memory CVEs with an exploit:
 |      415 | Double Free                                                             | 2 (0.9%)                    |
 
 
-#### How many Linux CVEs were identified by Coverity when the vulnerability was first introduced in the code?
+#### How many Linux CVEs were identified by a static analysis tool when the vulnerability was first introduced in the code?
 
 For this question,
 we focus on only Linux product.
@@ -573,22 +551,24 @@ are among these files.
 We then look at the time
 when these patch commit(s)
 were merged into the main codebase of Linux.
-If Coverity had any memory alert 
+If there were a memory alert
+in scan history dataset
 on the involved files of the CVE,
 the alert should get fixed 
 when the patch commit is merged
 (alert last appears before patch commit is merged,
 and get fixed after the merge).
-If there is such Coverity memory alerts
+If there is such memory alerts
 on the involved files that get fixed
 when a CVE get fixed,
-we assume that Coverity had an alert
+we assume that the studied security tool
+had an alert
 relevant to the certain CVE.
 
-**Only for 15 CVEs (2.5%), we found there was a possible Coverity alert**. 
+**Only for 15 CVEs (2.5%), we found there was a possible static analysis alert**. 
 We further looked at the 15 cases manually
 by looking at the CVE description and
-type of the alert raised by Coverity.
+type of the alert raised by the static analysis tool.
 For 12 cases, 
 the alert type somewhat matches CVE description, 
 while we could not determine such mataching
